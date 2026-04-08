@@ -1,6 +1,43 @@
 /* DenkHub Transcriber — App-specific styles
    Built on top of denkhub-core.css */
 
+/* --- Update Banner --- */
+.update-banner {
+  position: fixed;
+  top: 38px;
+  left: 220px;
+  right: 0;
+  z-index: 99;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-md);
+  background: var(--accent-color);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.update-link {
+  color: #fff;
+  text-decoration: underline;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.update-dismiss {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.1rem;
+  cursor: pointer;
+  opacity: 0.8;
+  padding: 0 4px;
+}
+
+.update-dismiss:hover { opacity: 1; }
+
 /* --- Titlebar drag region (macOS) --- */
 .titlebar-drag {
   position: fixed;

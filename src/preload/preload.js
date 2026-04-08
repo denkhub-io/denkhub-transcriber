@@ -35,7 +35,11 @@ contextBridge.exposeInMainWorld('api', {
   deleteTranscription: (id) => ipcRenderer.invoke('history:delete', id),
   exportTxt: (id) => ipcRenderer.invoke('history:export-txt', id),
 
+  // --- Updates ---
+  checkUpdate: () => ipcRenderer.invoke('app:check-update'),
+
   // --- Utility ---
+  openExternal: (url) => ipcRenderer.invoke('app:open-external', url),
   getMediaUrl: (filePath) => `media://${encodeURIComponent(filePath)}`,
   getPathForFile: (file) => webUtils.getPathForFile(file)
 });

@@ -1,3 +1,19 @@
+// Check for updates on startup
+window.api.checkUpdate().then(update => {
+  if (!update) return;
+  const banner = document.getElementById('updateBanner');
+  const message = document.getElementById('updateMessage');
+  const link = document.getElementById('updateLink');
+  const dismiss = document.getElementById('updateDismiss');
+  message.textContent = `Nuova versione disponibile: v${update.version}`;
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.api.openExternal(update.downloadUrl);
+  });
+  dismiss.addEventListener('click', () => banner.style.display = 'none');
+  banner.style.display = 'flex';
+}).catch(() => {});
+
 // Main transcription UI logic
 document.addEventListener('DOMContentLoaded', () => {
   const dropZone = document.getElementById('dropZone');

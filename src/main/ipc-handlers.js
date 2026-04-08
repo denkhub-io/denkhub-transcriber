@@ -209,6 +209,58 @@ function registerIpcHandlers(ipcMain, dialog) {
     fs.writeFileSync(result.filePath, item.full_text, 'utf8');
     return { success: true, path: result.filePath };
   });
+  // --- Utility ---
+  ipcMain.handle('app:open-external', (event, url) => {
+    const { shell } = require('electron');
+    shell.openExternal(url);
+  });
+
+  // --- Update check ---
+  ipcMain.handle('app:check-update', async () => {
+    const https = require('https');
+    const { app } = require('electron');
+    const currentVersion = app.getVersion();
+
+    try {
+      const release = await new Promise((resolve, reject) => {
+        const options = {
+          hostname: 'api.github.com',
+          path: '/repos/denkhub-io/denkhub-transcriber/releases/latest',
+          headers: { 'User-Agent': 'DenkHub-Transcriber/' + currentVersion }
+        };
+        https.get(options, (res) => {
+          if (res.statusCode === 404) return resolve(null);
+          let data = '';
+          res.on('data', chunk => data += chunk);
+          res.on('end', () => {
+            try { resolve(JSON.parse(data)); } catch { resolve(null); }
+          });
+        }).on('error', () => resolve(null));
+      });
+
+      if (!release || !release.tag_name) return null;
+
+      const latestVersion = release.tag_name.replace(/^v/, '');
+      if (latestVersion === currentVersion) return null;
+
+      // Simple semver compare
+      const cur = currentVersion.split('.').map(Number);
+      const lat = latestVersion.split('.').map(Number);
+      const isNewer = lat[0] > cur[0] || (lat[0] === cur[0] && lat[1] > cur[1]) || (lat[0] === cur[0] && lat[1] === cur[1] && lat[2] > cur[2]);
+
+      if (!isNewer) return null;
+
+      const dmgAsset = (release.assets || []).find(a => a.name.endsWith('.dmg') || a.name.endsWith('.exe'));
+      return {
+        version: latestVersion,
+        url: release.html_url,
+        downloadUrl: dmgAsset ? dmgAsset.browser_download_url : release.html_url,
+        notes: release.body || ''
+      };
+    } catch {
+      return null;
+    }
+  });
 }
 
 module.exports = { registerIpcHandlers };
