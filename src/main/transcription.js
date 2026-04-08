@@ -189,6 +189,16 @@ async function transcribe(options, onProgress) {
   console.log('[transcribe] model file:', modelFile, 'exists:', fs.existsSync(modelFile));
   if (!fs.existsSync(modelFile)) throw new Error(`Modello "${model}" non trovato. Scaricalo dalla sezione Modelli.`);
 
+  // Check model file integrity (detect incomplete downloads)
+  const modelManager = require('./model-manager');
+  const modelInfo = modelManager.MODELS[model];
+  if (modelInfo) {
+    const modelStat = fs.statSync(modelFile);
+    if (modelStat.size < modelInfo.bytes * 0.99) {
+      throw new Error(`Il modello "${model}" sembra corrotto o incompleto (${Math.round(modelStat.size / 1024 / 1024)} MB di ${modelInfo.size}). Eliminalo e riscaricalo dalla sezione Modelli.`);
+    }
+  }
+
   console.log('[transcribe] input file:', filePath, 'exists:', fs.existsSync(filePath));
   if (!fs.existsSync(filePath)) throw new Error('File non trovato: ' + filePath);
 

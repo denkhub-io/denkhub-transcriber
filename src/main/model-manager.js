@@ -117,6 +117,14 @@ function downloadModel(name, modelsDir, onProgress) {
 
           fileStream.on('finish', () => {
             fileStream.close(() => {
+              // Verify file size before renaming
+              const stat = fs.statSync(tempPath);
+              if (totalBytes > 0 && stat.size < totalBytes * 0.99) {
+                fs.unlink(tempPath, () => {});
+                activeDownload = null;
+                reject(new Error(`Download incompleto: ${Math.round(stat.size / 1024 / 1024)} MB di ${Math.round(totalBytes / 1024 / 1024)} MB. Riprova.`));
+                return;
+              }
               // Rename temp to final
               fs.rename(tempPath, finalPath, (err) => {
                 activeDownload = null;
