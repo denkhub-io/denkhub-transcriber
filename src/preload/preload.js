@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
 
@@ -36,5 +36,6 @@ contextBridge.exposeInMainWorld('api', {
   exportTxt: (id) => ipcRenderer.invoke('history:export-txt', id),
 
   // --- Utility ---
-  getMediaUrl: (filePath) => `media://${encodeURIComponent(filePath)}`
+  getMediaUrl: (filePath) => `media://${encodeURIComponent(filePath)}`,
+  getPathForFile: (file) => webUtils.getPathForFile(file)
 });

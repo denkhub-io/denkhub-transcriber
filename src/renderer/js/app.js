@@ -68,27 +68,16 @@ document.addEventListener('DOMContentLoaded', () => {
     dropZone.classList.remove('drag-over');
   });
 
-  dropZone.addEventListener('drop', async (e) => {
+  dropZone.addEventListener('drop', (e) => {
     e.preventDefault();
     dropZone.classList.remove('drag-over');
     if (e.dataTransfer.files.length > 0) {
       const file = e.dataTransfer.files[0];
-      if (file.path) {
-        currentFilePath = file.path;
-        currentFileName = file.name;
-        selectedFileName.textContent = `File selezionato: ${file.name}`;
-        transcribeBtn.disabled = false;
-        detectDuration(file);
-      } else {
-        // Fallback: file.path empty (sandboxed renderer) - use file dialog
-        const result = await window.api.openFile();
-        if (result) {
-          currentFilePath = result.filePath;
-          currentFileName = result.fileName;
-          selectedFileName.textContent = `File selezionato: ${result.fileName}`;
-          transcribeBtn.disabled = false;
-        }
-      }
+      currentFilePath = window.api.getPathForFile(file);
+      currentFileName = file.name;
+      selectedFileName.textContent = `File selezionato: ${file.name}`;
+      transcribeBtn.disabled = false;
+      detectDuration(file);
     }
   });
 
