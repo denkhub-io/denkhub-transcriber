@@ -4,7 +4,7 @@
 
 DenkHub Transcriber è un'applicazione desktop che converte la voce in testo usando l'intelligenza artificiale, senza inviare nulla a server esterni. Tutto avviene in locale sul tuo computer.
 
-Usa [whisper.cpp](https://github.com/ggerganov/whisper.cpp), la versione nativa in C++ del modello [Whisper](https://github.com/openai/whisper) di OpenAI — lo stesso motore usato dai migliori servizi di trascrizione, ma eseguito direttamente sulla tua macchina.
+Usa [whisper.cpp](https://github.com/ggerganov/whisper.cpp), la versione nativa in C++ del modello [Whisper](https://github.com/openai/whisper) di OpenAI - lo stesso motore usato dai migliori servizi di trascrizione, ma eseguito direttamente sulla tua macchina.
 
 [Scarica per macOS](https://github.com/denkhub-io/denkhub-transcriber/releases/latest) | [Scarica per Windows](https://github.com/denkhub-io/denkhub-transcriber/releases/latest)
 
@@ -12,12 +12,12 @@ Usa [whisper.cpp](https://github.com/ggerganov/whisper.cpp), la versione nativa 
 
 ## Perché DenkHub Transcriber
 
-- **100% locale e privato** — nessun dato lascia il tuo computer. Nessun account, nessuna API key, nessun abbonamento.
-- **Gratis e open source** — scarichi, installi, usi. Fine.
-- **Funziona offline** — una volta scaricato il modello AI, non serve internet.
-- **5 modelli a scelta** — dal velocissimo Tiny (75 MB) al precisissimo Large (3.1 GB). Scarichi solo quelli che ti servono.
-- **Supporta audio e video** — MP3, WAV, OGG, M4A, OPUS, MP4, MOV, AVI, MKV. Anche i messaggi vocali di WhatsApp.
-- **Multilingua** — italiano, inglese, francese, spagnolo, tedesco e rilevamento automatico.
+- **100% locale e privato** - nessun dato lascia il tuo computer. Nessun account, nessuna API key, nessun abbonamento.
+- **Gratis e open source** - scarichi, installi, usi. Fine.
+- **Funziona offline** - una volta scaricato il modello AI, non serve internet.
+- **5 modelli a scelta** - dal velocissimo Tiny (75 MB) al precisissimo Large (3.1 GB). Scarichi solo quelli che ti servono.
+- **Supporta audio e video** - MP3, WAV, OGG, M4A, OPUS, MP4, MOV, AVI, MKV. Anche i messaggi vocali di WhatsApp.
+- **Multilingua** - italiano, inglese, francese, spagnolo, tedesco e rilevamento automatico.
 
 ---
 
@@ -77,7 +77,7 @@ I modelli vengono scaricati al primo avvio tramite un wizard guidato. Puoi aggiu
 1. **Trascina** un file audio o video nella finestra (o clicca per selezionarlo)
 2. **Scegli** il modello AI e la lingua
 3. **Premi** Trascrivi
-4. **Risultato** — testo interattivo con sincronizzazione parola per parola, player audio, esportazione
+4. **Risultato** - testo interattivo con sincronizzazione parola per parola, player audio, esportazione
 
 Al primo avvio, un wizard ti guida nella configurazione: dove salvare i modelli, dove salvare le trascrizioni, quale modello scaricare.
 
@@ -104,17 +104,17 @@ npm run build:win
 ```
 
 ### Stack tecnologico
-- **Electron** — shell desktop
-- **whisper.cpp** (via nodejs-whisper) — motore di trascrizione
-- **FFmpeg** — conversione audio/video
-- **SQLite** (better-sqlite3) — database locale con ricerca full-text (FTS5)
-- **HTML/CSS/JS** — interfaccia utente (nessun framework)
+- **Electron** - shell desktop
+- **whisper.cpp** (via nodejs-whisper) - motore di trascrizione
+- **FFmpeg** - conversione audio/video
+- **SQLite** (better-sqlite3) - database locale con ricerca full-text (FTS5)
+- **HTML/CSS/JS** - interfaccia utente (nessun framework)
 
 ---
 
 ## Licenza
 
-MIT License — vedi [LICENSES.md](LICENSES.md) per i dettagli sulle licenze di tutti i componenti utilizzati.
+MIT License - vedi [LICENSES.md](LICENSES.md) per i dettagli sulle licenze di tutti i componenti utilizzati.
 
 ---
 
@@ -122,10 +122,10 @@ MIT License — vedi [LICENSES.md](LICENSES.md) per i dettagli sulle licenze di 
 
 Questo progetto è possibile grazie a:
 
-- [OpenAI Whisper](https://github.com/openai/whisper) — il modello di riconoscimento vocale
-- [whisper.cpp](https://github.com/ggerganov/whisper.cpp) di Georgi Gerganov — la reimplementazione C++ che rende tutto questo veloce e portatile
-- [Electron](https://www.electronjs.org/) — il framework desktop
-- [FFmpeg](https://ffmpeg.org/) — conversione multimediale
+- [OpenAI Whisper](https://github.com/openai/whisper) - il modello di riconoscimento vocale
+- [whisper.cpp](https://github.com/ggerganov/whisper.cpp) di Georgi Gerganov - la reimplementazione C++ che rende tutto questo veloce e portatile
+- [Electron](https://www.electronjs.org/) - il framework desktop
+- [FFmpeg](https://ffmpeg.org/) - conversione multimediale
 - La comunità open source che rende tutto questo possibile
 
 ---
