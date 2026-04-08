@@ -1,6 +1,6 @@
 {
   "name": "denkhub-transcriber",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "DenkHub Transcriber - Trascrizione audio/video locale con Whisper",
   "main": "src/main/index.js",
   "scripts": {

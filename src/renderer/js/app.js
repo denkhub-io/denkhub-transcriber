@@ -15,7 +15,15 @@ window.api.checkUpdate().then(async (update) => {
     dismiss.addEventListener('click', () => banner.style.display = 'none');
     const result = await window.api.downloadUpdate(update.downloadUrl);
     if (result && result.success) {
-      message.textContent = `v${update.version} scaricata! Apri il file per installare.`;
+      message.textContent = `v${update.version} pronta!`;
+      link.textContent = 'Installa ora';
+      link.style.display = '';
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (confirm(`Installare la versione ${update.version}? L'app verrà chiusa.`)) {
+          window.api.installUpdate(result.path);
+        }
+      });
     } else {
       message.textContent = `Nuova versione disponibile: v${update.version}`;
       link.style.display = '';

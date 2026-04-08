@@ -246,14 +246,19 @@ function registerIpcHandlers(ipcMain, dialog) {
         doGet(downloadUrl);
       });
 
-      // Open the downloaded file (DMG/installer)
-      const { shell } = require('electron');
-      shell.openPath(destPath);
       return { success: true, path: destPath };
     } catch (err) {
       console.error('[download-update] error:', err.message);
       return { success: false, error: err.message };
     }
+  });
+
+  // --- Install update: open installer and quit app ---
+  ipcMain.handle('app:install-update', async (event, filePath) => {
+    const { shell, app } = require('electron');
+    shell.openPath(filePath);
+    // Give the OS a moment to mount/open the installer before quitting
+    setTimeout(() => app.quit(), 1000);
   });
 
   // --- Update check ---

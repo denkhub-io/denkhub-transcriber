@@ -179,7 +179,7 @@ async function transcribe(options, onProgress) {
   }
   console.log('[transcribe] whisper-cli path:', whisperCli);
 
-  // Model file names (large uses v3-turbo)
+  // Model file names
   const MODEL_FILES = {
     tiny: 'ggml-tiny.bin', base: 'ggml-base.bin', small: 'ggml-small.bin',
     medium: 'ggml-medium.bin', large: 'ggml-large-v3.bin'

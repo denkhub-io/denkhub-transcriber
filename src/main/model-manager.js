@@ -28,6 +28,9 @@ async function ensureDir(dir) {
   await fs.promises.mkdir(dir, { recursive: true });
 }
 
+// Old model files that should be cleaned up
+const DEPRECATED_FILES = ['ggml-large-v3-turbo.bin'];
+
 async function listModels() {
   const modelsDir = await settings.get('modelsDirectory');
   if (!modelsDir) return [];
@@ -35,6 +38,14 @@ async function listModels() {
   try {
     await ensureDir(modelsDir);
     const files = await fs.promises.readdir(modelsDir);
+
+    // Clean up deprecated model files
+    for (const oldFile of DEPRECATED_FILES) {
+      if (files.includes(oldFile)) {
+        try { await fs.promises.unlink(path.join(modelsDir, oldFile)); } catch {}
+      }
+    }
+
     const result = [];
 
     for (const [name, info] of Object.entries(MODELS)) {
@@ -67,7 +78,10 @@ function downloadModel(name, modelsDir, onProgress) {
     const info = MODELS[name];
     if (!info) return reject(new Error(`Modello sconosciuto: ${name}`));
 
-    ensureDir(modelsDir).then(() => {
+    const STALL_TIMEOUT = 30000; // 30s without data = stall
+    const MAX_RETRIES = 5;
+
+    ensureDir(modelsDir).then(async () => {
       const finalPath = getModelPath(modelsDir, name);
       const tempPath = finalPath + '.downloading';
       const url = `${BASE_URL}/${getModelFileName(name)}`;
@@ -75,89 +89,155 @@ function downloadModel(name, modelsDir, onProgress) {
       const controller = new AbortController();
       activeDownload = { name, controller };
 
-      function doRequest(requestUrl) {
-        const parsedUrl = new URL(requestUrl);
-        const options = {
-          hostname: parsedUrl.hostname,
-          path: parsedUrl.pathname + parsedUrl.search,
-          headers: { 'User-Agent': 'DenkHub-Transcriber/1.0' }
-        };
+      // Check existing partial download for resume
+      let startBytes = 0;
+      try {
+        const stat = await fs.promises.stat(tempPath);
+        startBytes = stat.size;
+      } catch {}
 
-        const req = https.get(options, (res) => {
-          // Follow redirects
-          if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-            res.resume();
-            doRequest(res.headers.location);
-            return;
+      let attempt = 0;
+
+      function tryDownload() {
+        attempt++;
+
+        function doRequest(requestUrl) {
+          const parsedUrl = new URL(requestUrl);
+          const headers = { 'User-Agent': 'DenkHub-Transcriber/1.0' };
+          if (startBytes > 0) {
+            headers['Range'] = `bytes=${startBytes}-`;
           }
+          const options = {
+            hostname: parsedUrl.hostname,
+            path: parsedUrl.pathname + parsedUrl.search,
+            headers
+          };
 
-          if (res.statusCode !== 200) {
-            res.resume();
-            reject(new Error(`HTTP ${res.statusCode}`));
-            return;
-          }
+          const req = https.get(options, (res) => {
+            // Follow redirects
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+              res.resume();
+              doRequest(res.headers.location);
+              return;
+            }
 
-          const totalBytes = parseInt(res.headers['content-length'], 10) || info.bytes;
-          let downloadedBytes = 0;
+            // Server doesn't support Range — restart from zero
+            if (startBytes > 0 && res.statusCode === 200) {
+              startBytes = 0;
+            }
 
-          const fileStream = fs.createWriteStream(tempPath);
+            if (res.statusCode !== 200 && res.statusCode !== 206) {
+              res.resume();
+              reject(new Error(`HTTP ${res.statusCode}`));
+              return;
+            }
 
-          res.on('data', (chunk) => {
-            downloadedBytes += chunk.length;
-            const percent = (downloadedBytes / totalBytes) * 100;
-            onProgress({
-              model: name,
-              percent,
-              downloadedBytes,
-              totalBytes
+            const contentLength = parseInt(res.headers['content-length'], 10) || 0;
+            const totalBytes = (res.statusCode === 206) ? startBytes + contentLength : contentLength || info.bytes;
+            let downloadedBytes = startBytes;
+
+            const fileStream = fs.createWriteStream(tempPath, startBytes > 0 && res.statusCode === 206 ? { flags: 'a' } : {});
+
+            // Stall detection
+            let stallTimer = setTimeout(() => handleStall(), STALL_TIMEOUT);
+
+            function handleStall() {
+              req.destroy();
+              fileStream.close(() => {
+                if (controller.signal.aborted) return;
+                if (attempt < MAX_RETRIES) {
+                  // Update startBytes from what we've written so far
+                  try { startBytes = fs.statSync(tempPath).size; } catch { startBytes = downloadedBytes; }
+                  tryDownload();
+                } else {
+                  activeDownload = null;
+                  reject(new Error(`Download bloccato dopo ${MAX_RETRIES} tentativi. Riprova più tardi.`));
+                }
+              });
+            }
+
+            res.on('data', (chunk) => {
+              clearTimeout(stallTimer);
+              stallTimer = setTimeout(() => handleStall(), STALL_TIMEOUT);
+              downloadedBytes += chunk.length;
+              const percent = (downloadedBytes / totalBytes) * 100;
+              onProgress({
+                model: name,
+                percent,
+                downloadedBytes,
+                totalBytes
+              });
             });
-          });
 
-          res.pipe(fileStream);
+            res.pipe(fileStream);
 
-          fileStream.on('finish', () => {
-            fileStream.close(() => {
-              // Verify file size before renaming
-              const stat = fs.statSync(tempPath);
-              if (totalBytes > 0 && stat.size < totalBytes * 0.99) {
-                fs.unlink(tempPath, () => {});
-                activeDownload = null;
-                reject(new Error(`Download incompleto: ${Math.round(stat.size / 1024 / 1024)} MB di ${Math.round(totalBytes / 1024 / 1024)} MB. Riprova.`));
-                return;
-              }
-              // Rename temp to final
-              fs.rename(tempPath, finalPath, (err) => {
-                activeDownload = null;
-                if (err) reject(err);
-                else resolve({ success: true, path: finalPath });
+            fileStream.on('finish', () => {
+              clearTimeout(stallTimer);
+              fileStream.close(() => {
+                // Verify file size before renaming
+                const stat = fs.statSync(tempPath);
+                if (totalBytes > 0 && stat.size < totalBytes * 0.99) {
+                  // Incomplete but finished — retry with resume
+                  if (attempt < MAX_RETRIES) {
+                    startBytes = stat.size;
+                    tryDownload();
+                    return;
+                  }
+                  fs.unlink(tempPath, () => {});
+                  activeDownload = null;
+                  reject(new Error(`Download incompleto: ${Math.round(stat.size / 1024 / 1024)} MB di ${Math.round(totalBytes / 1024 / 1024)} MB. Riprova.`));
+                  return;
+                }
+                // Rename temp to final
+                fs.rename(tempPath, finalPath, (err) => {
+                  activeDownload = null;
+                  if (err) reject(err);
+                  else resolve({ success: true, path: finalPath });
+                });
+              });
+            });
+
+            res.on('error', (err) => {
+              clearTimeout(stallTimer);
+              fileStream.close(() => {
+                if (controller.signal.aborted) return;
+                if (attempt < MAX_RETRIES) {
+                  try { startBytes = fs.statSync(tempPath).size; } catch { startBytes = 0; }
+                  tryDownload();
+                } else {
+                  fs.unlink(tempPath, () => {});
+                  activeDownload = null;
+                  reject(err);
+                }
               });
             });
           });
 
-          res.on('error', (err) => {
-            fileStream.close();
+          req.on('error', (err) => {
+            if (controller.signal.aborted) return;
+            if (attempt < MAX_RETRIES) {
+              try { startBytes = fs.statSync(tempPath).size; } catch { startBytes = 0; }
+              tryDownload();
+            } else {
+              fs.unlink(tempPath, () => {});
+              activeDownload = null;
+              reject(err);
+            }
+          });
+
+          // Handle abort
+          controller.signal.addEventListener('abort', () => {
+            req.destroy();
             fs.unlink(tempPath, () => {});
             activeDownload = null;
-            reject(err);
+            reject(new Error('Download annullato'));
           });
-        });
+        }
 
-        req.on('error', (err) => {
-          fs.unlink(tempPath, () => {});
-          activeDownload = null;
-          reject(err);
-        });
-
-        // Handle abort
-        controller.signal.addEventListener('abort', () => {
-          req.destroy();
-          fs.unlink(tempPath, () => {});
-          activeDownload = null;
-          reject(new Error('Download annullato'));
-        });
+        doRequest(url);
       }
 
-      doRequest(url);
+      tryDownload();
     }).catch(reject);
   });
 }

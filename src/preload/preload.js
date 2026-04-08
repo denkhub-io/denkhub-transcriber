@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('api', {
   // --- Updates ---
   checkUpdate: () => ipcRenderer.invoke('app:check-update'),
   downloadUpdate: (url) => ipcRenderer.invoke('app:download-update', url),
+  installUpdate: (path) => ipcRenderer.invoke('app:install-update', path),
 
   // --- Utility ---
   openExternal: (url) => ipcRenderer.invoke('app:open-external', url),
