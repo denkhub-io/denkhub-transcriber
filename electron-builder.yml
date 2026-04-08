@@ -1,0 +1,49 @@
+appId: com.denkhub.transcriber
+productName: DenkHub Transcriber
+copyright: Copyright 2026 DenkHub
+
+directories:
+  output: dist
+  buildResources: assets
+
+files:
+  - src/**/*
+  - denkhub-kit/**/*
+  - node_modules/**/*
+  - "!node_modules/*/{CHANGELOG.md,README.md,readme.md}"
+  - "!**/*.{ts,map}"
+
+asarUnpack:
+  - "node_modules/ffmpeg-static/**"
+  - "node_modules/nodejs-whisper/**"
+  - "node_modules/better-sqlite3/**"
+
+mac:
+  category: public.app-category.productivity
+  icon: assets/icon.icns
+  target:
+    - target: dmg
+      arch:
+        - arm64
+
+dmg:
+  artifactName: "DenkHub-Transcriber-${version}-${arch}.dmg"
+
+win:
+  icon: assets/icon.png
+  extraResources:
+    - from: vendor/win32/
+      to: vendor/win32/
+      filter:
+        - "**/*"
+  target:
+    - target: nsis
+      arch:
+        - x64
+
+nsis:
+  oneClick: true
+  perMachine: false
+  artifactName: "DenkHub-Transcriber-Setup-${version}.exe"
+
+npmRebuild: true

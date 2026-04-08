@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment
+.env
+.env.local
+
+# Uploads and user data
+uploads/
+
+# Build output
+dist/
+out/
+
+# macOS
+.DS_Store
+._*
+
+# Electron
+*.dmg
+*.exe
+
+# Whisper models (too large for git)
+models/
+*.bin
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Vendor binaries (too large for git, downloaded at runtime)
+vendor/
+
+# Flask prototype (superseded by Electron app)
+app.py
+ai_engine.py
+requirements.txt
+templates/
+static/
+get-pip.py
+start_server.command
+
+# Internal docs (not part of the project)
+DOCUMENTAZIONE-ARTICOLO.md
+stile.md

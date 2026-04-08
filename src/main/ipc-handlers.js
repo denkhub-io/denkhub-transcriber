@@ -1,0 +1,214 @@
+const { BrowserWindow } = require('electron');
+const settings = require('./settings');
+const modelManager = require('./model-manager');
+const transcription = require('./transcription');
+const whisperBinary = require('./whisper-binary');
+const database = require('./database');
+
+function registerIpcHandlers(ipcMain, dialog) {
+
+  // --- Settings ---
+  ipcMain.handle('settings:get', async () => {
+    return await settings.getAll();
+  });
+
+  ipcMain.handle('settings:update', async (event, partial) => {
+    return await settings.update(partial);
+  });
+
+  ipcMain.handle('settings:is-first-run', async () => {
+    const val = await settings.get('setupComplete');
+    return !val;
+  });
+
+  ipcMain.handle('settings:complete-setup', async () => {
+    await settings.set('setupComplete', true);
+    return true;
+  });
+
+  // --- Default paths ---
+  ipcMain.handle('settings:default-path', (event, purpose) => {
+    const { app } = require('electron');
+    const path = require('path');
+    const homeDir = app.getPath('documents');
+    const base = path.join(homeDir, 'DenkHub Transcriber');
+    if (purpose === 'models') return path.join(base, 'Modelli');
+    return path.join(base, 'Trascrizioni');
+  });
+
+  // --- Dialogs ---
+  ipcMain.handle('dialog:choose-directory', async (event, purpose) => {
+    const win = BrowserWindow.getFocusedWindow();
+    const result = await dialog.showOpenDialog(win, {
+      title: purpose === 'models' ? 'Scegli cartella modelli' : 'Scegli cartella trascrizioni',
+      properties: ['openDirectory', 'createDirectory']
+    });
+    if (result.canceled) return null;
+    return result.filePaths[0];
+  });
+
+  ipcMain.handle('dialog:open-file', async () => {
+    const win = BrowserWindow.getFocusedWindow();
+    const result = await dialog.showOpenDialog(win, {
+      title: 'Seleziona file audio o video',
+      filters: [
+        { name: 'Audio/Video', extensions: ['mp3', 'wav', 'ogg', 'm4a', 'opus', 'mp4', 'mov', 'avi', 'mkv'] }
+      ],
+      properties: ['openFile']
+    });
+    if (result.canceled) return null;
+    return {
+      filePath: result.filePaths[0],
+      fileName: require('path').basename(result.filePaths[0])
+    };
+  });
+
+  // --- Models ---
+  ipcMain.handle('models:list', async () => {
+    const models = await modelManager.listModels();
+    console.log('[models:list]', models.map(m => `${m.name}: ${m.downloaded}`).join(', '));
+    return models;
+  });
+
+  ipcMain.handle('models:download', async (event, modelName) => {
+    const modelsDir = await settings.get('modelsDirectory');
+    if (!modelsDir) return { success: false, error: 'Cartella modelli non configurata' };
+
+    const win = BrowserWindow.getFocusedWindow();
+    try {
+      const result = await modelManager.downloadModel(modelName, modelsDir, (progress) => {
+        if (win && !win.isDestroyed()) {
+          win.webContents.send('models:download-progress', progress);
+        }
+      });
+      return result;
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('models:delete', async (event, modelName) => {
+    return await modelManager.deleteModel(modelName);
+  });
+
+  ipcMain.handle('models:cancel-download', () => {
+    modelManager.cancelDownload();
+    return { success: true };
+  });
+
+  // --- Whisper binary ---
+  ipcMain.handle('whisper:check', () => {
+    return whisperBinary.isBinaryReady();
+  });
+
+  ipcMain.handle('whisper:download', async (event) => {
+    const win = BrowserWindow.getFocusedWindow();
+    try {
+      await whisperBinary.downloadBinary((progress) => {
+        if (win && !win.isDestroyed()) {
+          win.webContents.send('whisper:download-progress', progress);
+        }
+      });
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  // --- Transcription ---
+  ipcMain.handle('transcribe:start', async (event, options) => {
+    console.log('[transcribe:start] options:', JSON.stringify(options));
+    const win = BrowserWindow.getFocusedWindow();
+
+    // Create pending entry in DB immediately so it appears in history
+    let pendingId = null;
+    try {
+      const fs = require('fs');
+      let fileSize = 0;
+      try { fileSize = fs.statSync(options.filePath).size; } catch {}
+
+      pendingId = database.insertTranscription({
+        filename: require('path').basename(options.filePath),
+        filePath: options.filePath,
+        language: options.language,
+        model: options.model,
+        fileSize,
+        status: 'pending'
+      });
+      console.log('[transcribe] created pending entry, id:', pendingId);
+    } catch (dbErr) {
+      console.error('[transcribe] db pending error:', dbErr.message);
+    }
+
+    try {
+      const result = await transcription.transcribe(options, (progress) => {
+        if (win && !win.isDestroyed()) {
+          win.webContents.send('transcribe:progress', progress);
+        }
+      });
+
+      // Complete the pending entry
+      if (result.success !== false && result.words && pendingId) {
+        try {
+          const duration = result.words.length > 0 ? result.words[result.words.length - 1].end : 0;
+          database.completeTranscription(pendingId, {
+            text: result.text || '',
+            words: result.words,
+            duration
+          });
+          result.id = pendingId;
+          console.log('[transcribe] completed, id:', pendingId);
+        } catch (dbErr) {
+          console.error('[transcribe] db complete error:', dbErr.message);
+        }
+      }
+
+      return result;
+    } catch (err) {
+      // Clean up failed pending entry
+      if (pendingId) database.failTranscription(pendingId);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // --- History ---
+  ipcMain.handle('history:search', (event, options) => {
+    return database.searchTranscriptions(options || {});
+  });
+
+  ipcMain.handle('history:get', (event, id) => {
+    return database.getTranscription(id);
+  });
+
+  ipcMain.handle('history:update-name', (event, { id, filename }) => {
+    return database.updateTranscriptionName(id, filename);
+  });
+
+  ipcMain.handle('history:update-words', (event, { id, words }) => {
+    return database.updateTranscriptionWords(id, words);
+  });
+
+  ipcMain.handle('history:delete', (event, id) => {
+    return database.deleteTranscription(id);
+  });
+
+  ipcMain.handle('history:export-txt', async (event, id) => {
+    const item = database.getTranscription(id);
+    if (!item) return { success: false, error: 'Trascrizione non trovata' };
+
+    const win = BrowserWindow.getFocusedWindow();
+    const result = await dialog.showSaveDialog(win, {
+      title: 'Esporta trascrizione',
+      defaultPath: item.filename.replace(/\.[^.]+$/, '') + '.txt',
+      filters: [{ name: 'Testo', extensions: ['txt'] }]
+    });
+
+    if (result.canceled) return { success: false };
+
+    const fs = require('fs');
+    fs.writeFileSync(result.filePath, item.full_text, 'utf8');
+    return { success: true, path: result.filePath };
+  });
+}
+
+module.exports = { registerIpcHandlers };
