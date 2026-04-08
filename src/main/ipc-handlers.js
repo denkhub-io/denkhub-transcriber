@@ -291,11 +291,12 @@ function registerIpcHandlers(ipcMain, dialog) {
 
       if (!isNewer) return null;
 
-      const dmgAsset = (release.assets || []).find(a => a.name.endsWith('.dmg') || a.name.endsWith('.exe'));
+      const ext = process.platform === 'win32' ? '.exe' : '.dmg';
+      const asset = (release.assets || []).find(a => a.name.endsWith(ext));
       return {
         version: latestVersion,
         url: release.html_url,
-        downloadUrl: dmgAsset ? dmgAsset.browser_download_url : release.html_url,
+        downloadUrl: asset ? asset.browser_download_url : release.html_url,
         notes: release.body || ''
       };
     } catch {
