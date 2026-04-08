@@ -47,6 +47,8 @@ gh release create "v${VERSION}" \
   "dist/DenkHub-Transcriber-Setup-${VERSION}.exe" \
   "dist/DenkHub-Transcriber-mac.dmg" \
   "dist/DenkHub-Transcriber-Setup.exe" \
+  "dist/latest-mac.yml" \
+  "dist/latest.yml" \
   --title "v${VERSION}" \
   --generate-notes
 
