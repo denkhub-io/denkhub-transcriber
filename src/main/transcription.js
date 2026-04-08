@@ -182,7 +182,7 @@ async function transcribe(options, onProgress) {
   // Model file names (large uses v3-turbo)
   const MODEL_FILES = {
     tiny: 'ggml-tiny.bin', base: 'ggml-base.bin', small: 'ggml-small.bin',
-    medium: 'ggml-medium.bin', large: 'ggml-large-v3-turbo.bin'
+    medium: 'ggml-medium.bin', large: 'ggml-large-v3.bin'
   };
   const modelFileName = MODEL_FILES[model] || `ggml-${model}.bin`;
   const modelFile = path.join(modelsDir, modelFileName);
