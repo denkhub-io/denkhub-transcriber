@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DenkHub Transcriber</title>
+  <link rel="stylesheet" href="../../denkhub-kit/tokens/denkhub-core.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+
+<body>
+  <!-- Titlebar drag region (macOS) -->
+  <div class="titlebar-drag"></div>
+
+  <!-- App Layout: Sidebar + Content -->
+  <div class="app-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <img src="../../denkhub-kit/assets/denkhub-mark.svg" alt="DenkHub" class="sidebar-logo">
+        <span class="sidebar-title">Transcriber</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="sidebar-item active" data-view="transcribe">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+          <span>Trascrivi</span>
+        </button>
+        <button class="sidebar-item" data-view="history">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <span>Cronologia</span>
+        </button>
+        <button class="sidebar-item" data-view="models">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+            <line x1="12" y1="22.08" x2="12" y2="12"/>
+          </svg>
+          <span>Modelli</span>
+        </button>
+        <button class="sidebar-item" data-view="settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          <span>Impostazioni</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <span class="sidebar-version">v1.0.0</span>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="app-content">
+
+      <!-- Setup Wizard (shown on first run) -->
+      <section id="setupView" class="view" style="display: none;">
+        <div class="setup-container">
+          <!-- EULA Step -->
+          <div class="setup-step" data-step="0">
+            <div class="setup-logo">
+              <img src="../../denkhub-kit/assets/denkhub-logo.svg" alt="DenkHub" style="height: 32px; margin-bottom: var(--space-lg);">
+            </div>
+            <h1 class="headline-xl">DenkHub <span class="text-gradient">Transcriber</span></h1>
+            <p class="lead-text">Prima di iniziare, leggi e accetta i termini di utilizzo.</p>
+
+            <div class="eula-box">
+              <h4>Termini di utilizzo</h4>
+              <p>DenkHub Transcriber è un software gratuito sviluppato da <strong>Enchelli Dario</strong> (denkhub.io), distribuito "così com'è" (as is), senza garanzie di alcun tipo, espresse o implicite.</p>
+
+              <h4>Privacy e dati</h4>
+              <p>L'applicazione funziona interamente in locale sul tuo computer. Nessun audio, video o testo trascritto viene inviato a server esterni. I tuoi dati non lasciano mai il tuo dispositivo.</p>
+
+              <h4>Componenti open source</h4>
+              <p>Questo software utilizza componenti open source tra cui <a href="https://github.com/ggerganov/whisper.cpp" style="color: var(--accent-color);">whisper.cpp</a> (MIT), <a href="https://ffmpeg.org" style="color: var(--accent-color);">FFmpeg</a> (GPL) e <a href="https://www.electronjs.org" style="color: var(--accent-color);">Electron</a> (MIT). L'elenco completo delle licenze è disponibile nelle impostazioni dell'app.</p>
+
+              <h4>Limitazione di responsabilità</h4>
+              <p>L'autore non è responsabile per danni diretti o indiretti derivanti dall'utilizzo del software, incluse imprecisioni nelle trascrizioni. L'utente è responsabile della verifica del contenuto trascritto prima di qualsiasi uso professionale o legale.</p>
+
+              <p style="margin-top: var(--space-sm);">Termini completi: <a href="https://denkhub.io/terms.php" style="color: var(--accent-color);">denkhub.io/terms</a> · Privacy: <a href="https://denkhub.io/privacy.php" style="color: var(--accent-color);">denkhub.io/privacy</a></p>
+            </div>
+
+            <div class="setup-actions-bottom">
+              <label class="eula-checkbox">
+                <input type="checkbox" id="eulaAccept">
+                <span>Accetto i termini di utilizzo</span>
+              </label>
+              <button id="setupNext0" class="btn btn-primary btn-lg" disabled>Avanti</button>
+            </div>
+          </div>
+
+          <div class="setup-step" data-step="1" style="display: none;">
+            <div class="setup-logo">
+              <img src="../../denkhub-kit/assets/denkhub-logo.svg" alt="DenkHub" style="height: 32px; margin-bottom: var(--space-lg);">
+            </div>
+            <div class="section-eyebrow">Passo 1 di 3</div>
+            <h1 class="headline-xl">Benvenuto in <span class="text-gradient">Transcriber</span></h1>
+            <p class="lead-text">Dove vuoi salvare i modelli di trascrizione?</p>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: var(--space-md);">
+              I modelli occupano da 75 MB a 3 GB. Scegli una cartella con spazio sufficiente.
+            </p>
+            <div class="setup-path-row">
+              <input type="text" id="setupModelsPath" class="field" readonly placeholder="Cartella predefinita">
+              <button id="setupChooseModels" class="btn btn-secondary">Cambia</button>
+            </div>
+            <div class="setup-actions-bottom">
+              <button id="setupNext1" class="btn btn-primary btn-lg">Avanti</button>
+            </div>
+          </div>
+
+          <div class="setup-step" data-step="2" style="display: none;">
+            <div class="setup-logo">
+              <img src="../../denkhub-kit/assets/denkhub-logo.svg" alt="DenkHub" style="height: 32px; margin-bottom: var(--space-lg);">
+            </div>
+            <div class="section-eyebrow">Passo 2 di 3</div>
+            <h1 class="headline-xl">Cartella <span class="text-gradient">Trascrizioni</span></h1>
+            <p class="lead-text">Dove vuoi salvare lo storico delle trascrizioni?</p>
+            <div class="setup-path-row">
+              <input type="text" id="setupTranscriptionsPath" class="field" readonly placeholder="Cartella predefinita">
+              <button id="setupChooseTranscriptions" class="btn btn-secondary">Cambia</button>
+            </div>
+            <div class="setup-actions-bottom">
+              <button id="setupBack2" class="btn btn-ghost">Indietro</button>
+              <button id="setupNext2" class="btn btn-primary btn-lg">Avanti</button>
+            </div>
+          </div>
+
+          <div class="setup-step" data-step="3" style="display: none;">
+            <div class="setup-logo">
+              <img src="../../denkhub-kit/assets/denkhub-logo.svg" alt="DenkHub" style="height: 32px; margin-bottom: var(--space-lg);">
+            </div>
+            <div class="section-eyebrow">Passo 3 di 3</div>
+            <h1 class="headline-xl">Scarica un <span class="text-gradient">Modello</span></h1>
+            <p class="lead-text">Seleziona uno o piu modelli da scaricare. Potrai gestirli anche dopo.</p>
+            <div class="setup-models-grid" id="setupModelsList">
+              <!-- Populated by setup.js -->
+            </div>
+            <div id="setupDownloadProgress" style="display: none; margin-top: var(--space-md);">
+              <div class="progress-track">
+                <div id="setupProgressBar" class="progress-fill" style="width: 0%;"></div>
+              </div>
+              <p id="setupProgressText" style="color: var(--text-secondary); font-size: 0.85rem; margin-top: var(--space-xs);">Scaricamento...</p>
+            </div>
+            <div class="setup-actions-bottom">
+              <button id="setupBack3" class="btn btn-ghost">Indietro</button>
+              <button id="setupFinish" class="btn btn-primary btn-lg" disabled>Inizia a trascrivere</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Transcribe View -->
+      <section id="transcribeView" class="view">
+        <div class="view-content">
+          <div class="section-eyebrow">Trascrizione</div>
+          <h1 class="headline-xl">Trasforma la voce in <span class="text-gradient">testo</span></h1>
+          <p class="lead-text">Carica un file audio o video. Il modello Whisper lo trascriverà localmente sul tuo computer.</p>
+
+          <!-- Settings Bar -->
+          <div class="settings-bar">
+            <div class="setting-item">
+              <label for="modelSelect" class="field-label">Modello</label>
+              <select id="modelSelect" class="field">
+                <!-- Populated dynamically from downloaded models -->
+              </select>
+            </div>
+            <div class="setting-item">
+              <label for="langSelect" class="field-label">Lingua</label>
+              <select id="langSelect" class="field">
+                <option value="auto" selected>Auto-detect</option>
+                <option value="it">Italiano</option>
+                <option value="en">Inglese</option>
+                <option value="fr">Francese</option>
+                <option value="es">Spagnolo</option>
+                <option value="de">Tedesco</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Upload Area -->
+          <div class="surface-card upload-card">
+            <div class="upload-area" id="dropZone">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-color); margin-bottom: var(--space-sm);">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <h3>Trascina qui il file audio o video</h3>
+              <p style="color: var(--text-secondary);">oppure clicca per selezionare</p>
+              <div id="selectedFileName" style="color: var(--text-primary); font-weight: 500; margin-top: var(--space-xs);"></div>
+            </div>
+            <div style="display: flex; justify-content: center; margin-top: var(--space-md);">
+              <button id="transcribeBtn" class="btn btn-primary" disabled>Trascrivi</button>
+            </div>
+          </div>
+
+          <!-- Processing Screen (replaces upload area during transcription) -->
+          <div id="processingScreen" class="processing-screen" style="display: none;">
+            <div class="processing-inner">
+              <div class="processing-spinner"></div>
+              <h2 class="headline-lg" id="processingTitle">Trascrizione in corso</h2>
+              <p class="processing-message" id="progressStatus">Avvio elaborazione neurale...</p>
+              <div class="processing-progress">
+                <div class="progress-track" style="max-width: 400px; margin: 0 auto;">
+                  <div id="progressBar" class="progress-fill" style="width: 0%;"></div>
+                </div>
+                <span id="progressPercent" class="processing-percent">0%</span>
+              </div>
+              <p class="processing-file" id="processingFileName"></p>
+            </div>
+          </div>
+
+          <!-- Result -->
+          <div id="resultContainer" class="result-container" style="display: none;">
+            <!-- Result Header -->
+            <div class="result-header">
+              <div class="result-header-info">
+                <h2 class="result-title" id="resultTitle">Trascrizione</h2>
+                <div class="result-meta" id="resultMeta"></div>
+              </div>
+              <div class="result-header-actions">
+                <button id="copyBtn" class="btn btn-secondary btn-sm">Copia testo</button>
+                <button id="exportTxtBtn" class="btn btn-secondary btn-sm">Esporta .txt</button>
+                <button id="clearBtn" class="btn btn-ghost btn-sm">Nuova trascrizione</button>
+              </div>
+            </div>
+
+            <!-- Custom Audio Player -->
+            <div id="audioPlayerContainer" class="custom-player surface-card" style="display: none;">
+              <audio id="audioPlayer"></audio>
+              <div class="player-controls">
+                <button id="playerPlayBtn" class="player-btn player-play-btn">
+                  <svg id="playerPlayIcon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  <svg id="playerPauseIcon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                </button>
+                <span class="player-time" id="playerCurrentTime">0:00</span>
+                <div class="player-track" id="playerTrack">
+                  <div class="player-track-fill" id="playerTrackFill"></div>
+                </div>
+                <span class="player-time" id="playerDuration">0:00</span>
+                <div class="player-speed">
+                  <button class="player-speed-btn active" data-speed="1">1x</button>
+                  <button class="player-speed-btn" data-speed="1.5">1.5x</button>
+                  <button class="player-speed-btn" data-speed="2">2x</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Transcription Text -->
+            <div id="transcriptionText" class="transcription-area"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- History View -->
+      <section id="historyView" class="view" style="display: none;">
+        <div class="view-content">
+          <div class="section-eyebrow">Cronologia</div>
+          <h1 class="headline-xl">Le tue <span class="text-gradient">trascrizioni</span></h1>
+
+          <div class="history-search-bar">
+            <input type="text" id="historySearch" class="field" placeholder="Cerca nelle trascrizioni...">
+          </div>
+
+          <div id="historyList" class="history-list">
+            <p style="color: var(--text-secondary); text-align: center; padding: var(--space-xl) 0;">
+              Nessuna trascrizione ancora. Inizia a trascrivere!
+            </p>
+          </div>
+
+          <!-- History Detail (shown when opening a transcription) -->
+          <div id="historyDetail" style="display: none;">
+            <button id="historyBackBtn" class="btn btn-ghost btn-sm" style="margin-bottom: var(--space-md);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><polyline points="15 18 9 12 15 6"/></svg>
+              Torna alla lista
+            </button>
+
+            <div class="result-header">
+              <div class="result-header-info">
+                <h2 class="result-title" id="historyDetailTitle">Trascrizione</h2>
+                <div class="result-meta" id="historyDetailMeta"></div>
+              </div>
+              <div class="result-header-actions">
+                <button class="btn btn-secondary btn-sm history-detail-copy">Copia testo</button>
+                <button class="btn btn-secondary btn-sm history-detail-export">Esporta .txt</button>
+                <button class="btn btn-danger btn-sm history-detail-delete">Elimina</button>
+              </div>
+            </div>
+
+            <div id="historyPlayerContainer" class="custom-player surface-card" style="display: none;">
+              <audio id="historyAudioPlayer"></audio>
+              <div class="player-controls">
+                <button class="player-btn player-play-btn" id="historyPlayerPlayBtn">
+                  <svg class="play-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  <svg class="pause-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                </button>
+                <span class="player-time history-current-time">0:00</span>
+                <div class="player-track history-track">
+                  <div class="player-track-fill history-track-fill"></div>
+                </div>
+                <span class="player-time history-duration">0:00</span>
+                <div class="player-speed">
+                  <button class="player-speed-btn active" data-speed="1">1x</button>
+                  <button class="player-speed-btn" data-speed="1.5">1.5x</button>
+                  <button class="player-speed-btn" data-speed="2">2x</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="historyTranscriptionText" class="transcription-area"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Models View -->
+      <section id="modelsView" class="view" style="display: none;">
+        <div class="view-content">
+          <div class="section-eyebrow">Gestione modelli</div>
+          <h1 class="headline-xl">Modelli <span class="text-gradient">Whisper</span></h1>
+          <p class="lead-text">Scarica e gestisci i modelli di trascrizione. Modelli piu grandi sono piu precisi ma piu lenti.</p>
+
+          <div id="modelsGrid" class="models-grid">
+            <!-- Populated by models.js -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Settings View -->
+      <section id="settingsView" class="view" style="display: none;">
+        <div class="view-content">
+          <div class="section-eyebrow">Impostazioni</div>
+          <h1 class="headline-xl"><span class="text-gradient">Configurazione</span></h1>
+
+          <div class="settings-section">
+            <div class="surface-card" style="padding: var(--space-md);">
+              <h3 style="margin-bottom: var(--space-xs);">Cartella modelli</h3>
+              <p style="color: var(--text-secondary); font-size: 0.82rem; margin-bottom: var(--space-sm);">Dove vengono salvati i modelli Whisper scaricati.</p>
+              <div class="setup-path-row">
+                <input type="text" id="settingsModelsPath" class="field" readonly>
+                <button id="settingsChangeModels" class="btn btn-secondary">Cambia</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <div class="surface-card" style="padding: var(--space-md);">
+              <h3 style="margin-bottom: var(--space-xs);">Cartella trascrizioni</h3>
+              <p style="color: var(--text-secondary); font-size: 0.82rem; margin-bottom: var(--space-sm);">Dove vengono salvati i file esportati.</p>
+              <div class="setup-path-row">
+                <input type="text" id="settingsTranscriptionsPath" class="field" readonly>
+                <button id="settingsChangeTranscriptions" class="btn btn-secondary">Cambia</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <div class="surface-card" style="padding: var(--space-md);">
+              <h3 style="margin-bottom: var(--space-xs);">Informazioni</h3>
+              <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+                <img src="../../denkhub-kit/assets/denkhub-logo.svg" alt="DenkHub" style="height: 24px;">
+                <span style="color: var(--text-secondary); font-size: 0.85rem;">Transcriber v1.0.0</span>
+              </div>
+              <p style="color: var(--text-secondary); font-size: 0.82rem;">
+                Trascrizione audio e video locale con Whisper. Nessun dato viene inviato a server esterni.
+              </p>
+              <p style="color: var(--text-secondary); font-size: 0.75rem; margin-top: var(--space-xs);">
+                Utilizza <a href="https://github.com/ggerganov/whisper.cpp" style="color: var(--accent-color);">whisper.cpp</a> (MIT),
+                <a href="https://ffmpeg.org" style="color: var(--accent-color);">FFmpeg</a> (GPL) e
+                <a href="https://www.electronjs.org" style="color: var(--accent-color);">Electron</a> (MIT).
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="js/messages.js"></script>
+  <script src="js/sidebar.js"></script>
+  <script src="js/setup.js"></script>
+  <script src="js/models.js"></script>
+  <script src="js/history.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/settings-view.js"></script>
+  <script src="js/app.js"></script>
+</body>
+
+</html>
