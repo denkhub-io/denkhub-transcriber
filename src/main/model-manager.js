@@ -8,7 +8,7 @@ const MODELS = {
   base:   { size: '142 MB',  bytes: 147951465,  file: 'ggml-base.bin' },
   small:  { size: '466 MB',  bytes: 487601967,  file: 'ggml-small.bin' },
   medium: { size: '1.5 GB',  bytes: 1533774781, file: 'ggml-medium.bin' },
-  large:  { size: '3.1 GB',  bytes: 3094623691,  file: 'ggml-large-v3-turbo.bin' }
+  large:  { size: '1.5 GB',  bytes: 1624555275,  file: 'ggml-large-v3-turbo.bin' }
 };
 
 const BASE_URL = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main';
