@@ -47,3 +47,5 @@ nsis:
   artifactName: "DenkHub-Transcriber-Setup-${version}.exe"
 
 npmRebuild: true
+
+afterPack: scripts/fix-dylibs.js
