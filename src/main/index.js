@@ -32,7 +32,23 @@ function registerMediaProtocol() {
   });
 }
 
-app.whenReady().then(() => {
+// Clear web cache when app version changes
+async function clearCacheIfUpdated() {
+  const fs = require('fs');
+  const versionFile = path.join(app.getPath('userData'), '.last-version');
+  const current = app.getVersion();
+  let last = null;
+  try { last = fs.readFileSync(versionFile, 'utf8').trim(); } catch {}
+  if (last !== current) {
+    const ses = require('electron').session.defaultSession;
+    await ses.clearCache();
+    await ses.clearStorageData({ storages: ['cachestorage', 'serviceworkers'] });
+    fs.writeFileSync(versionFile, current, 'utf8');
+    console.log(`[update] Cache cleared (${last} -> ${current})`);
+  }
+}
+
+app.whenReady().then(async () => {
   // Set dock icon on macOS
   if (process.platform === 'darwin') {
     const iconPath = path.join(__dirname, '..', '..', 'assets', 'icon.png');
@@ -40,6 +56,7 @@ app.whenReady().then(() => {
     if (!icon.isEmpty()) app.dock.setIcon(icon);
   }
 
+  await clearCacheIfUpdated();
   registerMediaProtocol();
   registerIpcHandlers(ipcMain, dialog);
   createWindow();
