@@ -215,6 +215,47 @@ function registerIpcHandlers(ipcMain, dialog) {
     shell.openExternal(url);
   });
 
+  // --- Download update ---
+  ipcMain.handle('app:download-update', async (event, downloadUrl) => {
+    const https = require('https');
+    const fs = require('fs');
+    const path = require('path');
+    const { app } = require('electron');
+
+    try {
+      const downloadsDir = app.getPath('downloads');
+      const fileName = path.basename(new URL(downloadUrl).pathname);
+      const destPath = path.join(downloadsDir, fileName);
+
+      await new Promise((resolve, reject) => {
+        function doGet(url) {
+          const parsedUrl = new URL(url);
+          https.get({ hostname: parsedUrl.hostname, path: parsedUrl.pathname + parsedUrl.search, headers: { 'User-Agent': 'DenkHub-Transcriber' } }, (res) => {
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+              res.resume();
+              doGet(res.headers.location);
+              return;
+            }
+            if (res.statusCode !== 200) { res.resume(); reject(new Error(`HTTP ${res.statusCode}`)); return; }
+            const file = fs.createWriteStream(destPath);
+            res.pipe(file);
+            file.on('finish', () => file.close(resolve));
+            file.on('error', reject);
+          }).on('error', reject);
+        }
+        doGet(downloadUrl);
+      });
+
+      // Open the downloaded file (DMG/installer)
+      const { shell } = require('electron');
+      shell.openPath(destPath);
+      return { success: true, path: destPath };
+    } catch (err) {
+      console.error('[download-update] error:', err.message);
+      return { success: false, error: err.message };
+    }
+  });
+
   // --- Update check ---
   ipcMain.handle('app:check-update', async () => {
     const https = require('https');

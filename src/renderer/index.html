@@ -374,6 +374,21 @@
 
           <div class="settings-section">
             <div class="surface-card" style="padding: var(--space-md);">
+              <h3 style="margin-bottom: var(--space-xs);">Aggiornamenti</h3>
+              <p style="color: var(--text-secondary); font-size: 0.82rem; margin-bottom: var(--space-sm);">Controlla se sono disponibili nuove versioni di Transcriber.</p>
+              <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+                <button id="settingsCheckUpdate" class="btn btn-secondary">Controlla aggiornamenti</button>
+                <span id="settingsUpdateStatus" style="color: var(--text-secondary); font-size: 0.82rem;"></span>
+              </div>
+              <label style="display: flex; align-items: center; gap: var(--space-xs); cursor: pointer;">
+                <input type="checkbox" id="settingsAutoUpdate" checked>
+                <span style="color: var(--text-secondary); font-size: 0.82rem;">Scarica automaticamente gli aggiornamenti</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <div class="surface-card" style="padding: var(--space-md);">
               <h3 style="margin-bottom: var(--space-xs);">Informazioni</h3>
               <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
                 <img src="../../denkhub-kit/assets/denkhub-logo.svg" alt="DenkHub" style="height: 24px;">

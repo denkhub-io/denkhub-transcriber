@@ -1,17 +1,32 @@
 // Check for updates on startup
-window.api.checkUpdate().then(update => {
+window.api.checkUpdate().then(async (update) => {
   if (!update) return;
   const banner = document.getElementById('updateBanner');
   const message = document.getElementById('updateMessage');
   const link = document.getElementById('updateLink');
   const dismiss = document.getElementById('updateDismiss');
-  message.textContent = `Nuova versione disponibile: v${update.version}`;
-  link.addEventListener('click', (e) => {
-    e.preventDefault();
-    window.api.openExternal(update.downloadUrl);
-  });
-  dismiss.addEventListener('click', () => banner.style.display = 'none');
-  banner.style.display = 'flex';
+
+  // Check if auto-download is enabled
+  const settings = await window.api.getSettings();
+  if (settings.autoUpdate !== false) {
+    message.textContent = `Scaricamento v${update.version}...`;
+    link.style.display = 'none';
+    banner.style.display = 'flex';
+    dismiss.addEventListener('click', () => banner.style.display = 'none');
+    const result = await window.api.downloadUpdate(update.downloadUrl);
+    if (result && result.success) {
+      message.textContent = `v${update.version} scaricata! Apri il file per installare.`;
+    } else {
+      message.textContent = `Nuova versione disponibile: v${update.version}`;
+      link.style.display = '';
+      link.addEventListener('click', (e) => { e.preventDefault(); window.api.openExternal(update.downloadUrl); });
+    }
+  } else {
+    message.textContent = `Nuova versione disponibile: v${update.version}`;
+    link.addEventListener('click', (e) => { e.preventDefault(); window.api.openExternal(update.downloadUrl); });
+    dismiss.addEventListener('click', () => banner.style.display = 'none');
+    banner.style.display = 'flex';
+  }
 }).catch(() => {});
 
 // Main transcription UI logic
