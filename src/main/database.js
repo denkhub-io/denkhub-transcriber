@@ -31,6 +31,16 @@ function getDb() {
   // Add status column if missing (migration for existing DBs)
   try { db.exec(`ALTER TABLE transcriptions ADD COLUMN status TEXT NOT NULL DEFAULT 'done'`); } catch {}
 
+  // One-time FTS rebuild to fix out-of-sync entries from previously missing update trigger
+  try {
+    db.exec(`CREATE TABLE IF NOT EXISTS _migrations (key TEXT PRIMARY KEY)`);
+    const done = db.prepare(`SELECT 1 FROM _migrations WHERE key = 'fts_rebuild_v1'`).get();
+    if (!done) {
+      db.exec(`INSERT INTO transcriptions_fts(transcriptions_fts) VALUES('rebuild')`);
+      db.prepare(`INSERT INTO _migrations (key) VALUES ('fts_rebuild_v1')`).run();
+    }
+  } catch {}
+
   db.exec(`
 
     CREATE VIRTUAL TABLE IF NOT EXISTS transcriptions_fts USING fts5(
@@ -50,6 +60,13 @@ function getDb() {
     CREATE TRIGGER IF NOT EXISTS transcriptions_ad AFTER DELETE ON transcriptions BEGIN
       INSERT INTO transcriptions_fts(transcriptions_fts, rowid, filename, full_text, language, model_used)
       VALUES ('delete', old.id, old.filename, old.full_text, old.language, old.model_used);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS transcriptions_au AFTER UPDATE ON transcriptions BEGIN
+      INSERT INTO transcriptions_fts(transcriptions_fts, rowid, filename, full_text, language, model_used)
+      VALUES ('delete', old.id, old.filename, old.full_text, old.language, old.model_used);
+      INSERT INTO transcriptions_fts(rowid, filename, full_text, language, model_used)
+      VALUES (new.id, new.filename, new.full_text, new.language, new.model_used);
     END;
   `);
 
@@ -133,7 +150,26 @@ function updateTranscriptionWords(id, words) {
 
 function deleteTranscription(id) {
   const d = getDb();
-  d.prepare('DELETE FROM transcriptions WHERE id = ?').run(id);
+  try {
+    d.prepare('DELETE FROM transcriptions WHERE id = ?').run(id);
+  } catch (err) {
+    // FTS index likely out of sync — rebuild and retry
+    try {
+      d.exec(`INSERT INTO transcriptions_fts(transcriptions_fts) VALUES('rebuild')`);
+      d.prepare('DELETE FROM transcriptions WHERE id = ?').run(id);
+    } catch (retryErr) {
+      // FTS rebuild failed — drop triggers, delete row, recreate
+      d.exec(`DROP TRIGGER IF EXISTS transcriptions_ad`);
+      d.prepare('DELETE FROM transcriptions WHERE id = ?').run(id);
+      d.exec(`
+        CREATE TRIGGER IF NOT EXISTS transcriptions_ad AFTER DELETE ON transcriptions BEGIN
+          INSERT INTO transcriptions_fts(transcriptions_fts, rowid, filename, full_text, language, model_used)
+          VALUES ('delete', old.id, old.filename, old.full_text, old.language, old.model_used);
+        END
+      `);
+      d.exec(`INSERT INTO transcriptions_fts(transcriptions_fts) VALUES('rebuild')`);
+    }
+  }
   return { success: true };
 }
 
