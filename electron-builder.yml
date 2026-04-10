@@ -9,9 +9,10 @@ directories:
 files:
   - src/**/*
   - denkhub-kit/**/*
-  - node_modules/**/*
-  - "!node_modules/*/{CHANGELOG.md,README.md,readme.md}"
   - "!**/*.{ts,map}"
+  - "!**/CHANGELOG.md"
+  - "!**/README.md"
+  - "!node_modules/nodejs-whisper/cpp/**"
 
 asarUnpack:
   - "node_modules/ffmpeg-static/**"

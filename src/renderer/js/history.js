@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentDetailId = null;
 
   function showList() {
+    if (window.WordEditMode && window.WordEditMode.isActive()) window.WordEditMode.deactivate();
     historyList.style.display = '';
     historyDetail.style.display = 'none';
     searchInput.parentElement.style.display = '';
@@ -162,20 +163,49 @@ document.addEventListener('DOMContentLoaded', () => {
     const copyBtn = historyDetail.querySelector('.history-detail-copy');
     const exportBtn = historyDetail.querySelector('.history-detail-export');
     const deleteBtn = historyDetail.querySelector('.history-detail-delete');
+    const editBtn = historyDetail.querySelector('.history-detail-edit');
 
     // Remove old listeners by cloning
     const newCopy = copyBtn.cloneNode(true);
     const newExport = exportBtn.cloneNode(true);
     const newDelete = deleteBtn.cloneNode(true);
+    const newEdit = editBtn.cloneNode(true);
     copyBtn.replaceWith(newCopy);
     exportBtn.replaceWith(newExport);
     deleteBtn.replaceWith(newDelete);
+    editBtn.replaceWith(newEdit);
+
+    // Edit mode toggle
+    newEdit.addEventListener('click', () => {
+      if (!words || words.length === 0) return;
+      const active = window.WordEditMode.toggle(
+        textContainer,
+        words,
+        audio,
+        (w) => { if (currentDetailId) window.api.updateWords(currentDetailId, w); },
+        (w, c, a) => renderHistoryWords(w, c, a)
+      );
+      newEdit.classList.toggle('active', active);
+      newEdit.innerHTML = active
+        ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Chiudi modifica'
+        : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg> Modifica';
+    });
+
+    // Listen for Esc deactivation
+    const editModeListener = (e) => {
+      if (!e.detail.active) {
+        newEdit.classList.remove('active');
+        newEdit.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg> Modifica';
+      }
+    };
+    window.addEventListener('word-edit-mode-changed', editModeListener);
 
     newCopy.addEventListener('click', () => {
       navigator.clipboard.writeText(words.map(w => w.word).join(' '));
     });
     newExport.addEventListener('click', () => window.api.exportTxt(id));
     newDelete.addEventListener('click', async () => {
+      if (window.WordEditMode && window.WordEditMode.isActive()) window.WordEditMode.deactivate();
       if (!confirm('Eliminare questa trascrizione?')) return;
       await window.api.deleteTranscription(id);
       showList();

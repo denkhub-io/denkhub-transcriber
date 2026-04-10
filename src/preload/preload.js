@@ -35,13 +35,21 @@ contextBridge.exposeInMainWorld('api', {
   deleteTranscription: (id) => ipcRenderer.invoke('history:delete', id),
   exportTxt: (id) => ipcRenderer.invoke('history:export-txt', id),
 
+  // --- Changelog ---
+  shouldShowChangelog: () => ipcRenderer.invoke('app:should-show-changelog'),
+  changelogSeen: () => ipcRenderer.invoke('app:changelog-seen'),
+
   // --- Updates ---
   checkUpdate: () => ipcRenderer.invoke('app:check-update'),
   downloadUpdate: (url) => ipcRenderer.invoke('app:download-update', url),
   installUpdate: (path) => ipcRenderer.invoke('app:install-update', path),
 
+  // --- Recording ---
+  saveRecording: (buffer, ext) => ipcRenderer.invoke('recording:save', { buffer, ext }),
+
   // --- Utility ---
   openExternal: (url) => ipcRenderer.invoke('app:open-external', url),
   getMediaUrl: (filePath) => `media://${encodeURIComponent(filePath)}`,
-  getPathForFile: (file) => webUtils.getPathForFile(file)
+  getPathForFile: (file) => webUtils.getPathForFile(file),
+  readFileBuffer: (filePath) => ipcRenderer.invoke('file:read-buffer', filePath)
 });

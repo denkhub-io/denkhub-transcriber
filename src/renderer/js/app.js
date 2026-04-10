@@ -65,6 +65,27 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentTranscriptionId = null;
   let simulationInterval = null;
 
+  // --- Trimmer state ---
+  const trimmerContainer = document.getElementById('trimmerContainer');
+  const trimmerAudio = document.getElementById('trimmerAudio');
+  const trimmerPlayBtn = document.getElementById('trimmerPlayBtn');
+  const trimPlayIcon = document.getElementById('trimPlayIcon');
+  const trimPauseIcon = document.getElementById('trimPauseIcon');
+  const trimCurrentTime = document.getElementById('trimCurrentTime');
+  const trimDurationEl = document.getElementById('trimDuration');
+  const trimmerTrack = document.getElementById('trimmerTrack');
+  const trimmerRange = document.getElementById('trimmerRange');
+  const trimmerPlayhead = document.getElementById('trimmerPlayhead');
+  const trimHandleStart = document.getElementById('trimHandleStart');
+  const trimHandleEnd = document.getElementById('trimHandleEnd');
+  const trimEnabled = document.getElementById('trimEnabled');
+  const trimStartLabel = document.getElementById('trimStartLabel');
+  const trimEndLabel = document.getElementById('trimEndLabel');
+  const trimDurationLabel = document.getElementById('trimDurationLabel');
+
+  let trimStart = 0;
+  let trimEnd = 0; // set to duration on load
+
   // --- UI States ---
   function showUploadState() {
     heroElements.forEach(el => el.style.display = '');
@@ -72,6 +93,8 @@ document.addEventListener('DOMContentLoaded', () => {
     uploadCard.style.display = '';
     processingScreen.style.display = 'none';
     resultContainer.style.display = 'none';
+    recordingPanel.style.display = 'none';
+    if (!currentFilePath) hideTrimmer();
     transcribeBtn.disabled = !currentFilePath;
   }
 
@@ -81,6 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
     uploadCard.style.display = 'none';
     resultContainer.style.display = 'none';
     processingScreen.style.display = '';
+    trimmerAudio.pause();
     processingFileName.textContent = currentFileName || '';
     processingTitle.textContent = 'Trascrizione in corso';
     progressBar.style.width = '0%';
@@ -134,6 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fileDuration = audio.duration;
         const mins = Math.round(fileDuration / 60);
         selectedFileName.textContent += ` (${mins} min)`;
+        initTrimmer(result.filePath, fileDuration);
       };
       audio.onerror = () => { fileDuration = 600; };
     }
@@ -149,10 +174,579 @@ document.addEventListener('DOMContentLoaded', () => {
       URL.revokeObjectURL(objectUrl);
       const mins = Math.round(fileDuration / 60);
       selectedFileName.textContent += ` (${mins} min)`;
+      initTrimmer(currentFilePath, fileDuration);
     };
     media.onerror = () => { fileDuration = 600; };
     media.src = objectUrl;
   }
+
+  // --- Trimmer ---
+  // --- Waveform ---
+  const waveformCanvas = document.getElementById('trimmerWaveform');
+  const waveformCtx = waveformCanvas.getContext('2d');
+  let waveformAudioCtx = null;
+  let waveformData = null; // cached RMS bars for the full audio
+  let zoomLevel = 1;       // 1 = full audio visible
+  let zoomOffset = 0;      // 0..1, fraction of audio that's scrolled past
+
+  function initTrimmer(filePath, duration) {
+    trimStart = 0;
+    trimEnd = duration;
+    trimEnabled.checked = false;
+    trimmerContainer.classList.remove('trim-active');
+    zoomLevel = 1;
+    zoomOffset = 0;
+    waveformData = null;
+
+    const mediaUrl = window.api.getMediaUrl(filePath);
+    trimmerAudio.src = mediaUrl;
+    trimmerAudio.preload = 'metadata';
+    trimmerContainer.style.display = '';
+
+    trimmerAudio.onloadedmetadata = () => {
+      trimDurationEl.textContent = fmtTime(trimmerAudio.duration);
+      trimEnd = trimmerAudio.duration;
+      updateTrimUI();
+    };
+
+    updateTrimUI();
+    loadWaveform(filePath);
+  }
+
+  async function loadWaveform(filePath) {
+    try {
+      const buffer = await window.api.readFileBuffer(filePath);
+      const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+
+      if (!waveformAudioCtx) waveformAudioCtx = new AudioContext();
+      const audioBuffer = await waveformAudioCtx.decodeAudioData(arrayBuffer);
+
+      // Pre-compute RMS data at high resolution
+      const channel = audioBuffer.getChannelData(0);
+      const totalBars = 2000; // high-res data, we'll downsample when drawing
+      const samplesPerBar = Math.floor(channel.length / totalBars);
+      const bars = [];
+      let maxRms = 0;
+
+      for (let i = 0; i < totalBars; i++) {
+        const start = i * samplesPerBar;
+        const end = Math.min(start + samplesPerBar, channel.length);
+        let sum = 0;
+        for (let j = start; j < end; j++) sum += channel[j] * channel[j];
+        const rms = Math.sqrt(sum / (end - start));
+        bars.push(rms);
+        if (rms > maxRms) maxRms = rms;
+      }
+
+      // Normalize
+      if (maxRms > 0) {
+        for (let i = 0; i < bars.length; i++) bars[i] /= maxRms;
+      }
+
+      waveformData = bars;
+      drawWaveform();
+    } catch (err) {
+      console.warn('[trimmer] waveform failed:', err);
+    }
+  }
+
+  function drawWaveform() {
+    if (!waveformData) return;
+
+    const rect = waveformCanvas.parentElement.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    waveformCanvas.width = rect.width * dpr;
+    waveformCanvas.height = rect.height * dpr;
+    waveformCanvas.style.width = rect.width + 'px';
+    waveformCanvas.style.height = rect.height + 'px';
+
+    const w = waveformCanvas.width;
+    const h = waveformCanvas.height;
+    const midY = h / 2;
+
+    waveformCtx.clearRect(0, 0, w, h);
+
+    // Determine visible portion based on zoom
+    const totalBars = waveformData.length;
+    const visibleFraction = 1 / zoomLevel;
+    const startBar = Math.floor(zoomOffset * totalBars);
+    const visibleBars = Math.floor(totalBars * visibleFraction);
+    const endBar = Math.min(startBar + visibleBars, totalBars);
+
+    // Draw bars — accent blue inside trim, white outside
+    const displayBars = Math.floor(w / (2 * dpr));
+    const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim() || '#2997ff';
+    const barWidth = w / displayBars;
+    const dur = trimmerAudio.duration || fileDuration || 1;
+    const isTrimActive = trimEnabled.checked;
+
+    for (let i = 0; i < displayBars; i++) {
+      const dataStart = startBar + Math.floor((i / displayBars) * (endBar - startBar));
+      const dataEnd = startBar + Math.floor(((i + 1) / displayBars) * (endBar - startBar));
+
+      let peak = 0;
+      for (let j = dataStart; j < dataEnd && j < totalBars; j++) {
+        if (waveformData[j] > peak) peak = waveformData[j];
+      }
+
+      const barH = Math.max(1.5 * dpr, peak * midY * 0.92);
+
+      // Determine if this bar is inside the trim selection
+      const barTimeFrac = (dataStart / totalBars);
+      const barTime = barTimeFrac * dur;
+      const insideTrim = !isTrimActive || (barTime >= trimStart && barTime <= trimEnd);
+
+      if (insideTrim) {
+        waveformCtx.fillStyle = accentColor;
+        waveformCtx.globalAlpha = 0.35 + peak * 0.5;
+      } else {
+        waveformCtx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        waveformCtx.globalAlpha = 0.15 + peak * 0.25;
+      }
+
+      waveformCtx.fillRect(i * barWidth, midY - barH, barWidth - dpr * 0.5, barH * 2);
+    }
+
+    waveformCtx.globalAlpha = 1;
+  }
+
+  // Zoom with mouse wheel on timeline
+  trimmerTrack.parentElement.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const rect = trimmerTrack.getBoundingClientRect();
+    const mouseX = (e.clientX - rect.left) / rect.width; // 0..1 position
+
+    const oldZoom = zoomLevel;
+    const zoomDelta = e.deltaY < 0 ? 1.25 : 0.8;
+    zoomLevel = Math.max(1, Math.min(50, zoomLevel * zoomDelta));
+
+    if (zoomLevel === 1) {
+      zoomOffset = 0;
+    } else {
+      // Keep the point under the mouse cursor stable
+      const visibleBefore = 1 / oldZoom;
+      const visibleAfter = 1 / zoomLevel;
+      const cursorTime = zoomOffset + mouseX * visibleBefore;
+      zoomOffset = cursorTime - mouseX * visibleAfter;
+      zoomOffset = Math.max(0, Math.min(1 - visibleAfter, zoomOffset));
+    }
+
+    drawWaveform();
+    updateTrimUI();
+  }, { passive: false });
+
+  // Redraw on resize
+  let waveformResizeTimeout;
+  window.addEventListener('resize', () => {
+    clearTimeout(waveformResizeTimeout);
+    waveformResizeTimeout = setTimeout(() => {
+      if (trimmerContainer.style.display !== 'none' && waveformData) drawWaveform();
+    }, 200);
+  });
+
+  function hideTrimmer() {
+    trimmerContainer.style.display = 'none';
+    trimmerAudio.pause();
+    trimmerAudio.src = '';
+  }
+
+  // Convert absolute time (seconds) to percentage position on the visible track
+  function timeToTrackPct(t) {
+    const dur = trimmerAudio.duration || fileDuration || 1;
+    const frac = t / dur; // 0..1 in full audio
+    const visibleFrac = 1 / zoomLevel;
+    return ((frac - zoomOffset) / visibleFrac) * 100;
+  }
+
+  // Convert track percentage (0..100) to absolute time
+  function trackPctToTime(pct) {
+    const dur = trimmerAudio.duration || fileDuration || 1;
+    const visibleFrac = 1 / zoomLevel;
+    const frac = zoomOffset + (pct / 100) * visibleFrac;
+    return frac * dur;
+  }
+
+  function updateTrimUI() {
+    const dur = trimmerAudio.duration || fileDuration || 1;
+    const startPct = timeToTrackPct(trimStart);
+    const endPct = timeToTrackPct(trimEnd);
+
+    // Clamp to visible range
+    const clampedStart = Math.max(0, Math.min(100, startPct));
+    const clampedEnd = Math.max(0, Math.min(100, endPct));
+
+    trimmerRange.style.left = clampedStart + '%';
+    trimmerRange.style.right = (100 - clampedEnd) + '%';
+    trimHandleStart.style.left = clampedStart + '%';
+    trimHandleEnd.style.left = clampedEnd + '%';
+
+    // Only show handles if within visible range
+    trimHandleStart.style.display = (startPct >= -5 && startPct <= 105) ? '' : 'none';
+    trimHandleEnd.style.display = (endPct >= -5 && endPct <= 105) ? '' : 'none';
+
+    trimmerTrack.style.setProperty('--trim-start-pct', clampedStart + '%');
+    trimmerTrack.style.setProperty('--trim-end-pct', clampedEnd + '%');
+
+    trimStartLabel.textContent = fmtTime(trimStart);
+    trimEndLabel.textContent = fmtTime(trimEnd);
+    const selDur = trimEnd - trimStart;
+    if (trimEnabled.checked && selDur < dur - 0.1) {
+      trimDurationLabel.textContent = `Durata selezionata: ${fmtTime(selDur)}`;
+    } else {
+      trimDurationLabel.textContent = '';
+    }
+
+    // Redraw waveform to update bar colors
+    drawWaveform();
+  }
+
+  // Toggle trim mode
+  trimEnabled.addEventListener('change', () => {
+    trimmerContainer.classList.toggle('trim-active', trimEnabled.checked);
+    if (!trimEnabled.checked) {
+      trimStart = 0;
+      trimEnd = trimmerAudio.duration || fileDuration;
+    }
+    updateTrimUI();
+  });
+
+  // Play/Pause trimmer preview
+  trimmerPlayBtn.addEventListener('click', () => {
+    if (trimmerAudio.paused) {
+      if (trimEnabled.checked) {
+        trimmerAudio.currentTime = trimStart;
+      }
+      trimmerAudio.play();
+    } else {
+      trimmerAudio.pause();
+    }
+  });
+
+  trimmerAudio.addEventListener('play', () => {
+    trimPlayIcon.style.display = 'none';
+    trimPauseIcon.style.display = '';
+  });
+
+  trimmerAudio.addEventListener('pause', () => {
+    trimPlayIcon.style.display = '';
+    trimPauseIcon.style.display = 'none';
+  });
+
+  trimmerAudio.addEventListener('timeupdate', () => {
+    const t = trimmerAudio.currentTime;
+    trimCurrentTime.textContent = fmtTime(t);
+
+    // Playhead position (zoom-aware)
+    const pct = timeToTrackPct(t);
+    trimmerPlayhead.style.left = Math.max(0, Math.min(100, pct)) + '%';
+    trimmerPlayhead.style.display = (pct >= 0 && pct <= 100) ? '' : 'none';
+
+    // Stop at trim end if trim is enabled
+    if (trimEnabled.checked && t >= trimEnd) {
+      trimmerAudio.pause();
+      trimmerAudio.currentTime = trimStart;
+    }
+  });
+
+  // Click on track to seek
+  trimmerTrack.parentElement.addEventListener('click', (e) => {
+    if (e.target.closest('.trimmer-handle')) return;
+    const rect = trimmerTrack.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    trimmerAudio.currentTime = trackPctToTime(pct);
+  });
+
+  // Drag handles
+  function initHandleDrag(handleEl, isStart) {
+    let dragging = false;
+
+    const onMove = (e) => {
+      if (!dragging) return;
+      const rect = trimmerTrack.getBoundingClientRect();
+      const pct = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+      const dur = trimmerAudio.duration || fileDuration;
+      const time = Math.max(0, Math.min(dur, trackPctToTime(pct)));
+
+      if (isStart) {
+        trimStart = Math.min(time, trimEnd - 0.5);
+        trimStart = Math.max(0, trimStart);
+      } else {
+        trimEnd = Math.max(time, trimStart + 0.5);
+        trimEnd = Math.min(dur, trimEnd);
+      }
+      updateTrimUI();
+    };
+
+    const onUp = () => {
+      dragging = false;
+      handleEl.classList.remove('dragging');
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+
+    handleEl.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragging = true;
+      handleEl.classList.add('dragging');
+      // Auto-enable trim on handle drag
+      if (!trimEnabled.checked) {
+        trimEnabled.checked = true;
+        trimmerContainer.classList.add('trim-active');
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  }
+
+  initHandleDrag(trimHandleStart, true);
+  initHandleDrag(trimHandleEnd, false);
+
+  function fmtTime(s) {
+    if (!s || isNaN(s)) return '0:00';
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${String(sec).padStart(2, '0')}`;
+  }
+
+  // --- Recording ---
+  const recordBtn = document.getElementById('recordBtn');
+  const recordOptionsBtn = document.getElementById('recordOptionsBtn');
+  const recordOptionsMenu = document.getElementById('recordOptionsMenu');
+  const recOptMic = document.getElementById('recOptMic');
+  const recOptSystem = document.getElementById('recOptSystem');
+  const recordingPanel = document.getElementById('recordingPanel');
+  const recordingTimer = document.getElementById('recordingTimer');
+  const recordingWaveform = document.getElementById('recordingWaveform');
+  const recordingSources = document.getElementById('recordingSources');
+  const recordStopBtn = document.getElementById('recordStopBtn');
+  const recWaveCtx = recordingWaveform.getContext('2d');
+
+  let mediaRecorder = null;
+  let recordedChunks = [];
+  let recordingStartTime = 0;
+  let recordingTimerInterval = null;
+  let recAnalyser = null;
+  let recAnimFrame = null;
+  let recAudioCtx = null;
+
+  // Toggle options menu
+  recordOptionsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const show = recordOptionsMenu.style.display === 'none';
+    recordOptionsMenu.style.display = show ? '' : 'none';
+  });
+
+  // Close menu on click outside
+  document.addEventListener('click', (e) => {
+    if (!recordOptionsMenu.contains(e.target) && e.target !== recordOptionsBtn) {
+      recordOptionsMenu.style.display = 'none';
+    }
+  });
+
+  // Hide system audio option on non-macOS (only works on Mac)
+  if (navigator.platform.indexOf('Mac') === -1) {
+    recOptSystem.closest('.record-option').style.display = 'none';
+  }
+
+  // Ensure at least one source is checked
+  recOptMic.addEventListener('change', () => {
+    if (!recOptMic.checked && !recOptSystem.checked) recOptSystem.checked = true;
+  });
+  recOptSystem.addEventListener('change', () => {
+    if (!recOptSystem.checked && !recOptMic.checked) recOptMic.checked = true;
+  });
+
+  // Start recording
+  recordBtn.addEventListener('click', async () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') return;
+
+    const useMic = recOptMic.checked;
+    const useSystem = recOptSystem.checked;
+    recordOptionsMenu.style.display = 'none';
+
+    try {
+      const streams = [];
+      let sourceLabels = [];
+
+      // Microphone stream
+      if (useMic) {
+        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        streams.push(micStream);
+        sourceLabels.push('Microfono');
+      }
+
+      // System audio stream (via getDisplayMedia + loopback)
+      if (useSystem) {
+        try {
+          const sysStream = await navigator.mediaDevices.getDisplayMedia({
+            audio: true,
+            video: true // required by Chromium, we discard it
+          });
+          // Remove video track — we only want audio
+          sysStream.getVideoTracks().forEach(t => t.stop());
+          if (sysStream.getAudioTracks().length > 0) {
+            streams.push(sysStream);
+            sourceLabels.push('Audio Mac');
+          }
+        } catch (sysErr) {
+          console.warn('[recording] system audio failed:', sysErr);
+          if (!useMic) {
+            alert('Impossibile catturare audio di sistema. Abilita "Registrazione schermo" in Impostazioni > Privacy e sicurezza.');
+            return;
+          }
+        }
+      }
+
+      if (streams.length === 0) {
+        alert('Nessuna sorgente audio disponibile.');
+        return;
+      }
+
+      // Combine streams if multiple
+      let combinedStream;
+      if (streams.length === 1) {
+        combinedStream = streams[0];
+      } else {
+        recAudioCtx = new AudioContext();
+        const dest = recAudioCtx.createMediaStreamDestination();
+        streams.forEach(s => {
+          const src = recAudioCtx.createMediaStreamSource(s);
+          src.connect(dest);
+        });
+        combinedStream = dest.stream;
+      }
+
+      // Set up analyser for waveform
+      const analyserCtx = recAudioCtx || new AudioContext();
+      if (!recAudioCtx) recAudioCtx = analyserCtx;
+      recAnalyser = analyserCtx.createAnalyser();
+      recAnalyser.fftSize = 256;
+      const src = analyserCtx.createMediaStreamSource(combinedStream);
+      src.connect(recAnalyser);
+
+      // MediaRecorder
+      mediaRecorder = new MediaRecorder(combinedStream, {
+        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus' : 'audio/webm'
+      });
+      recordedChunks = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        clearInterval(recordingTimerInterval);
+        cancelAnimationFrame(recAnimFrame);
+
+        // Stop all tracks
+        streams.forEach(s => s.getTracks().forEach(t => t.stop()));
+
+        const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+        const buffer = await blob.arrayBuffer();
+
+        // Save to temp file
+        const filePath = await window.api.saveRecording(new Uint8Array(buffer), 'webm');
+
+        // Hide recording panel, set as current file
+        recordingPanel.style.display = 'none';
+        currentFilePath = filePath;
+        currentFileName = `Registrazione ${new Date().toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`;
+        selectedFileName.textContent = `Registrato: ${currentFileName}`;
+        transcribeBtn.disabled = false;
+
+        // Detect duration and show trimmer
+        const audio = new Audio(`media://${encodeURIComponent(filePath)}`);
+        audio.preload = 'metadata';
+        audio.onloadedmetadata = () => {
+          fileDuration = audio.duration;
+          selectedFileName.textContent += ` (${fmtTime(audio.duration)})`;
+          initTrimmer(filePath, audio.duration);
+        };
+
+        // Show upload area again
+        dropZone.style.display = '';
+        document.querySelector('.action-row').style.display = '';
+
+        if (recAudioCtx) { recAudioCtx.close(); recAudioCtx = null; }
+      };
+
+      // Start
+      mediaRecorder.start(250); // collect data every 250ms
+      recordingStartTime = Date.now();
+      recordedChunks = [];
+
+      // Show recording UI
+      dropZone.style.display = 'none';
+      trimmerContainer.style.display = 'none';
+      document.querySelector('.action-row').style.display = 'none';
+      recordingPanel.style.display = '';
+      recordingSources.textContent = sourceLabels.join(' + ');
+
+      // Timer
+      recordingTimerInterval = setInterval(() => {
+        const elapsed = (Date.now() - recordingStartTime) / 1000;
+        recordingTimer.textContent = fmtTime(elapsed);
+      }, 250);
+
+      // Waveform animation
+      drawRecordingWaveform();
+
+    } catch (err) {
+      console.error('[recording] error:', err);
+      if (err.name === 'NotAllowedError') {
+        alert('Permesso negato. Controlla le impostazioni di privacy del sistema per microfono e registrazione schermo.');
+      } else {
+        alert('Errore registrazione: ' + err.message);
+      }
+    }
+  });
+
+  function drawRecordingWaveform() {
+    if (!recAnalyser) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const rect = recordingWaveform.getBoundingClientRect();
+    recordingWaveform.width = rect.width * dpr;
+    recordingWaveform.height = rect.height * dpr;
+    recordingWaveform.style.width = rect.width + 'px';
+    recordingWaveform.style.height = rect.height + 'px';
+
+    const bufLen = recAnalyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufLen);
+
+    function draw() {
+      recAnimFrame = requestAnimationFrame(draw);
+      recAnalyser.getByteFrequencyData(dataArray);
+
+      const w = recordingWaveform.width;
+      const h = recordingWaveform.height;
+      const barCount = Math.min(bufLen, Math.floor(w / (3 * dpr)));
+      const barWidth = w / barCount;
+
+      recWaveCtx.clearRect(0, 0, w, h);
+
+      for (let i = 0; i < barCount; i++) {
+        const val = dataArray[i] / 255;
+        const barH = Math.max(2 * dpr, val * h * 0.85);
+
+        recWaveCtx.fillStyle = '#ff3b30';
+        recWaveCtx.globalAlpha = 0.3 + val * 0.6;
+        recWaveCtx.fillRect(i * barWidth, (h - barH) / 2, barWidth - dpr * 0.5, barH);
+      }
+      recWaveCtx.globalAlpha = 1;
+    }
+
+    draw();
+  }
+
+  // Stop recording
+  recordStopBtn.addEventListener('click', () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+    }
+  });
 
   // --- Transcription ---
   transcribeBtn.addEventListener('click', async () => {
@@ -178,11 +772,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const model = document.getElementById('modelSelect').value;
       const language = document.getElementById('langSelect').value;
 
-      const result = await window.api.transcribe({
-        filePath: currentFilePath,
-        model,
-        language
-      });
+      // Pass trim params if trim is enabled
+      const transcribeOpts = { filePath: currentFilePath, model, language, displayName: currentFileName };
+      if (trimEnabled.checked) {
+        const dur = trimmerAudio.duration || fileDuration;
+        if (trimStart > 0) transcribeOpts.trimStart = trimStart;
+        if (trimEnd < dur - 0.1) transcribeOpts.trimEnd = trimEnd;
+      }
+
+      const result = await window.api.transcribe(transcribeOpts);
 
       clearInterval(simulationInterval);
 
@@ -238,6 +836,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window._mainPlayer) window._mainPlayer.reset();
     showResultState();
   }
+
 
   // --- Editable title ---
   document.getElementById('resultTitle').addEventListener('click', function () {
@@ -487,6 +1086,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('clearBtn').addEventListener('click', () => {
+    if (window.WordEditMode && window.WordEditMode.isActive()) window.WordEditMode.deactivate();
     currentFilePath = null;
     currentFileName = null;
     currentWords = [];
@@ -495,10 +1095,38 @@ document.addEventListener('DOMContentLoaded', () => {
     audioPlayer.pause();
     audioPlayerContainer.style.display = 'none';
     showUploadState();
+    updateEditBtn(false);
+  });
+
+  // --- Edit Mode toggle ---
+  const editModeBtn = document.getElementById('editModeBtn');
+  editModeBtn.addEventListener('click', () => {
+    if (!currentWords || currentWords.length === 0) return;
+    const active = window.WordEditMode.toggle(
+      transcriptionText,
+      currentWords,
+      audioPlayer,
+      (words) => persistWords(words),
+      (words, container, audioEl) => renderWords(words, container, audioEl)
+    );
+    updateEditBtn(active);
+  });
+
+  function updateEditBtn(active) {
+    editModeBtn.classList.toggle('active', active);
+    editModeBtn.innerHTML = active
+      ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Chiudi modifica'
+      : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg> Modifica';
+  }
+
+  // Listen for edit mode deactivation (e.g. via Esc key)
+  window.addEventListener('word-edit-mode-changed', (e) => {
+    if (!e.detail.active) updateEditBtn(false);
   });
 
   // Clicking "Trascrivi" in sidebar always resets to fresh upload
   window.addEventListener('reset-transcribe', () => {
+    if (window.WordEditMode && window.WordEditMode.isActive()) window.WordEditMode.deactivate();
     currentFilePath = null;
     currentFileName = null;
     currentWords = [];
@@ -508,8 +1136,10 @@ document.addEventListener('DOMContentLoaded', () => {
     transcriptionText.innerHTML = '';
     audioPlayer.pause();
     audioPlayerContainer.style.display = 'none';
+    hideTrimmer();
     editHistory.undoStack = [];
     editHistory.redoStack = [];
     showUploadState();
+    updateEditBtn(false);
   });
 });

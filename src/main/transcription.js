@@ -136,20 +136,28 @@ function findFileRecursive(dir, filename) {
 }
 
 // Extract audio to 16kHz mono WAV
-function extractAudio(inputPath, outputPath, ffmpegPath) {
+function extractAudio(inputPath, outputPath, ffmpegPath, trimStart, trimEnd) {
   return new Promise((resolve, reject) => {
     const ffmpeg = ffmpegPath;
     if (!ffmpeg) return reject(new Error('ffmpeg non trovato'));
 
-    const args = [
-      '-i', inputPath,
+    const args = [];
+    // Trim: seek before input for fast seeking
+    if (trimStart && trimStart > 0) args.push('-ss', String(trimStart));
+    args.push('-i', inputPath);
+    // Trim: end time (relative to seek start if -ss before -i)
+    if (trimEnd && trimEnd > 0) {
+      const duration = (trimStart && trimStart > 0) ? trimEnd - trimStart : trimEnd;
+      args.push('-t', String(duration));
+    }
+    args.push(
       '-vn',           // no video
       '-ar', '16000',  // 16kHz
       '-ac', '1',      // mono
       '-f', 'wav',     // WAV format
       '-y',            // overwrite
       outputPath
-    ];
+    );
 
     execFile(ffmpeg, args, { timeout: 300000 }, (err, stdout, stderr) => {
       if (err) reject(new Error(`ffmpeg error: ${stderr || err.message}`));
@@ -167,7 +175,7 @@ function needsConversion(filePath) {
 
 // Transcribe audio file using whisper-cli
 async function transcribe(options, onProgress) {
-  const { filePath, model, language } = options;
+  const { filePath, model, language, trimStart, trimEnd } = options;
   const modelsDir = await settings.get('modelsDirectory');
 
   // Find or download whisper-cli
@@ -208,12 +216,13 @@ async function transcribe(options, onProgress) {
   let audioPath = filePath;
   let tempWav = null;
 
-  if (needsConversion(filePath)) {
-    onProgress({ stage: 'Conversione audio in formato WAV...' });
+  const hasTrim = (trimStart && trimStart > 0) || (trimEnd && trimEnd > 0);
+  if (needsConversion(filePath) || hasTrim) {
+    onProgress({ stage: hasTrim ? 'Taglio e conversione audio...' : 'Conversione audio in formato WAV...' });
     const ffmpegPath = await ensureFfmpeg(onProgress);
     tempWav = path.join(require('os').tmpdir(), `transcriber_${Date.now()}.wav`);
-    console.log('[transcribe] converting to WAV:', tempWav);
-    await extractAudio(filePath, tempWav, ffmpegPath);
+    console.log('[transcribe] converting to WAV:', tempWav, hasTrim ? `trim: ${trimStart}→${trimEnd}` : '');
+    await extractAudio(filePath, tempWav, ffmpegPath, trimStart, trimEnd);
     audioPath = tempWav;
   }
 
@@ -238,8 +247,8 @@ async function transcribe(options, onProgress) {
       console.log('[transcribe] done. err:', err ? err.message : 'none');
       console.log('[transcribe] stdout length:', stdout ? stdout.length : 0);
       console.log('[transcribe] stderr:', stderr ? stderr.substring(0, 500) : 'none');
-      // Clean up temp file
-      if (tempWav && fs.existsSync(tempWav)) {
+      // Clean up temp file (but keep if trimmed — used as player source)
+      if (tempWav && fs.existsSync(tempWav) && !hasTrim) {
         fs.unlink(tempWav, () => {});
       }
 
@@ -249,14 +258,17 @@ async function transcribe(options, onProgress) {
 
       try {
         const result = parseWhisperOutput(stdout, filePath);
+        // Use trimmed WAV as audio source if available
+        if (hasTrim && tempWav && fs.existsSync(tempWav)) {
+          result.audioPath = tempWav;
+        }
         resolve(result);
       } catch (parseErr) {
-        // If JSON parsing fails, try to extract text from stdout
         resolve({
           success: true,
           text: stdout.trim(),
           words: [],
-          audioPath: filePath
+          audioPath: (hasTrim && tempWav) ? tempWav : filePath
         });
       }
     });
@@ -392,4 +404,4 @@ function parseWhisperJson(data, originalFilePath) {
   };
 }
 
-module.exports = { transcribe };
+module.exports = { transcribe, ensureFfmpeg };

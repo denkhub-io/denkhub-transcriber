@@ -58,7 +58,7 @@
       </nav>
 
       <div class="sidebar-footer">
-        <span class="sidebar-version">v1.0.5</span>
+        <span class="sidebar-version">v1.1.0</span>
       </div>
     </aside>
 
@@ -208,8 +208,79 @@
               <p style="color: var(--text-secondary);">oppure clicca per selezionare</p>
               <div id="selectedFileName" style="color: var(--text-primary); font-weight: 500; margin-top: var(--space-xs);"></div>
             </div>
-            <div style="display: flex; justify-content: center; margin-top: var(--space-md);">
+            <!-- Audio Trimmer (shown after file load) -->
+            <div id="trimmerContainer" class="trimmer-container" style="display: none;">
+              <div class="trimmer-header">
+                <span class="trimmer-label">Anteprima e taglio audio</span>
+                <label class="trimmer-toggle">
+                  <input type="checkbox" id="trimEnabled">
+                  <span class="trimmer-toggle-label">Taglia</span>
+                </label>
+              </div>
+              <div class="trimmer-player">
+                <button class="trimmer-play-btn" id="trimmerPlayBtn" title="Riproduci anteprima">
+                  <svg class="trim-play-icon" id="trimPlayIcon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  <svg class="trim-pause-icon" id="trimPauseIcon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                </button>
+                <span class="trimmer-time" id="trimCurrentTime">0:00</span>
+                <div class="trimmer-track-wrapper" id="trimmerTrackWrapper">
+                  <div class="trimmer-track" id="trimmerTrack">
+                    <canvas class="trimmer-waveform" id="trimmerWaveform"></canvas>
+                    <div class="trimmer-range" id="trimmerRange"></div>
+                    <div class="trimmer-playhead" id="trimmerPlayhead"></div>
+                    <div class="trimmer-handle trimmer-handle-start" id="trimHandleStart"></div>
+                    <div class="trimmer-handle trimmer-handle-end" id="trimHandleEnd"></div>
+                  </div>
+                </div>
+                <span class="trimmer-time" id="trimDuration">0:00</span>
+              </div>
+              <div class="trimmer-info" id="trimmerInfo">
+                <span id="trimStartLabel">0:00</span>
+                <span id="trimDurationLabel"></span>
+                <span id="trimEndLabel">0:00</span>
+              </div>
+              <audio id="trimmerAudio" preload="metadata"></audio>
+            </div>
+
+            <div class="action-row">
               <button id="transcribeBtn" class="btn btn-primary" disabled>Trascrivi</button>
+
+              <div class="record-group">
+                <button id="recordBtn" class="btn btn-record">
+                  <span class="record-dot"></span>
+                  Registra
+                </button>
+                <button id="recordOptionsBtn" class="btn btn-record-opts" title="Opzioni registrazione">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div id="recordOptionsMenu" class="record-options-menu" style="display: none;">
+                  <label class="record-option">
+                    <input type="checkbox" id="recOptMic" checked>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                    <span>Microfono</span>
+                  </label>
+                  <label class="record-option">
+                    <input type="checkbox" id="recOptSystem">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    <span>Audio Mac</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Recording UI (shown during recording) -->
+            <div id="recordingPanel" class="recording-panel" style="display: none;">
+              <div class="recording-header">
+                <span class="recording-pulse"></span>
+                <span class="recording-label">Registrazione in corso</span>
+                <span class="recording-timer" id="recordingTimer">0:00</span>
+              </div>
+              <canvas id="recordingWaveform" class="recording-waveform"></canvas>
+              <div class="recording-sources" id="recordingSources"></div>
+              <button id="recordStopBtn" class="btn btn-danger">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                Ferma e trascrivi
+              </button>
             </div>
           </div>
 
@@ -238,6 +309,10 @@
                 <div class="result-meta" id="resultMeta"></div>
               </div>
               <div class="result-header-actions">
+                <button id="editModeBtn" class="btn btn-ghost btn-sm we-toggle-btn" title="Modalità modifica parole">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                  Modifica
+                </button>
                 <button id="copyBtn" class="btn btn-secondary btn-sm">Copia testo</button>
                 <button id="exportTxtBtn" class="btn btn-secondary btn-sm">Esporta .txt</button>
                 <button id="clearBtn" class="btn btn-ghost btn-sm">Nuova trascrizione</button>
@@ -300,6 +375,10 @@
                 <div class="result-meta" id="historyDetailMeta"></div>
               </div>
               <div class="result-header-actions">
+                <button class="btn btn-ghost btn-sm we-toggle-btn history-detail-edit" title="Modalità modifica parole">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                  Modifica
+                </button>
                 <button class="btn btn-secondary btn-sm history-detail-copy">Copia testo</button>
                 <button class="btn btn-secondary btn-sm history-detail-export">Esporta .txt</button>
                 <button class="btn btn-danger btn-sm history-detail-delete">Elimina</button>
@@ -375,15 +454,26 @@
           <div class="settings-section">
             <div class="surface-card" style="padding: var(--space-md);">
               <h3 style="margin-bottom: var(--space-xs);">Aggiornamenti</h3>
-              <p style="color: var(--text-secondary); font-size: 0.82rem; margin-bottom: var(--space-sm);">Controlla se sono disponibili nuove versioni di Transcriber.</p>
-              <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
-                <button id="settingsCheckUpdate" class="btn btn-secondary">Controlla aggiornamenti</button>
-                <span id="settingsUpdateStatus" style="color: var(--text-secondary); font-size: 0.82rem;"></span>
+              <p style="color: var(--text-secondary); font-size: 0.82rem; margin-bottom: var(--space-md);">Controlla se sono disponibili nuove versioni di Transcriber.</p>
+
+              <div class="settings-update-check">
+                <button id="settingsCheckUpdate" class="btn btn-secondary btn-sm">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;">
+                    <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                  </svg>
+                  Controlla aggiornamenti
+                </button>
+                <span id="settingsUpdateStatus" class="settings-update-status"></span>
               </div>
-              <label style="display: flex; align-items: center; gap: var(--space-xs); cursor: pointer;">
-                <input type="checkbox" id="settingsAutoUpdate" checked>
-                <span style="color: var(--text-secondary); font-size: 0.82rem;">Scarica automaticamente gli aggiornamenti</span>
-              </label>
+
+              <div class="settings-toggle-row">
+                <span class="settings-toggle-label">Scarica automaticamente gli aggiornamenti</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="settingsAutoUpdate" checked>
+                  <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                </label>
+              </div>
             </div>
           </div>
 
@@ -392,7 +482,7 @@
               <h3 style="margin-bottom: var(--space-xs);">Informazioni</h3>
               <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
                 <img src="../../denkhub-kit/assets/denkhub-logo.svg" alt="DenkHub" style="height: 24px;">
-                <span style="color: var(--text-secondary); font-size: 0.85rem;">Transcriber v1.0.5</span>
+                <span style="color: var(--text-secondary); font-size: 0.85rem;">Transcriber v1.1.0</span>
               </div>
               <p style="color: var(--text-secondary); font-size: 0.82rem;">
                 Trascrizione audio e video locale con Whisper. Nessun dato viene inviato a server esterni.
@@ -405,19 +495,47 @@
             </div>
           </div>
 
+          <div class="settings-section">
+            <div class="surface-card" style="padding: var(--space-md);">
+              <h3 style="margin-bottom: var(--space-sm);">Changelog</h3>
+              <div id="changelogAccordion" class="changelog-accordion">
+                <!-- Populated by changelog.js -->
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
 
     </main>
   </div>
 
+  <!-- Changelog Modal -->
+  <div id="changelogModal" class="changelog-modal-overlay" style="display: none;">
+    <div class="changelog-modal">
+      <div class="changelog-modal-header">
+        <h2 class="changelog-modal-title">Novità</h2>
+        <button id="changelogModalClose" class="changelog-modal-close">&times;</button>
+      </div>
+      <div id="changelogModalBody" class="changelog-modal-body">
+        <!-- Populated by changelog.js -->
+      </div>
+      <div class="changelog-modal-footer">
+        <button id="changelogModalDismiss" class="btn btn-primary">Ho capito</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/changelog-data.js"></script>
   <script src="js/messages.js"></script>
   <script src="js/sidebar.js"></script>
   <script src="js/setup.js"></script>
   <script src="js/models.js"></script>
   <script src="js/history.js"></script>
   <script src="js/player.js"></script>
+  <script src="js/word-editor.js"></script>
   <script src="js/settings-view.js"></script>
+  <script src="js/changelog.js"></script>
   <script src="js/app.js"></script>
 </body>
 

@@ -22,6 +22,16 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+
+  // Allow system audio capture via getDisplayMedia
+  const { desktopCapturer, session } = require('electron');
+  session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+    desktopCapturer.getSources({ types: ['screen'] }).then((sources) => {
+      callback({ video: sources[0], audio: 'loopback' });
+    }).catch(() => {
+      callback({});
+    });
+  });
 }
 
 // Register custom protocol for serving local media files

@@ -128,7 +128,7 @@ function registerIpcHandlers(ipcMain, dialog) {
       try { fileSize = fs.statSync(options.filePath).size; } catch {}
 
       pendingId = database.insertTranscription({
-        filename: require('path').basename(options.filePath),
+        filename: options.displayName || require('path').basename(options.filePath),
         filePath: options.filePath,
         language: options.language,
         model: options.model,
@@ -209,10 +209,61 @@ function registerIpcHandlers(ipcMain, dialog) {
     fs.writeFileSync(result.filePath, item.full_text, 'utf8');
     return { success: true, path: result.filePath };
   });
+  // --- Changelog ---
+  ipcMain.handle('app:should-show-changelog', async () => {
+    const { app } = require('electron');
+    const current = app.getVersion();
+    const seen = await settings.get('lastChangelogSeen');
+    return seen !== current;
+  });
+
+  ipcMain.handle('app:changelog-seen', async () => {
+    const { app } = require('electron');
+    await settings.set('lastChangelogSeen', app.getVersion());
+    return true;
+  });
+
   // --- Utility ---
   ipcMain.handle('app:open-external', (event, url) => {
     const { shell } = require('electron');
     shell.openExternal(url);
+  });
+
+  // --- Recording ---
+  ipcMain.handle('recording:save', async (event, { buffer, ext }) => {
+    const fs = require('fs');
+    const path = require('path');
+    const os = require('os');
+    const ts = Date.now();
+    const webmPath = path.join(os.tmpdir(), `recording_${ts}.${ext || 'webm'}`);
+    const wavPath = path.join(os.tmpdir(), `recording_${ts}.wav`);
+    fs.writeFileSync(webmPath, Buffer.from(buffer));
+
+    // Convert to WAV for proper seeking/duration support
+    try {
+      const { ensureFfmpeg } = require('./transcription');
+      const ffmpegPath = await ensureFfmpeg(() => {});
+      await new Promise((resolve, reject) => {
+        const { execFile } = require('child_process');
+        execFile(ffmpegPath, [
+          '-i', webmPath, '-vn', '-ar', '44100', '-ac', '1', '-f', 'wav', '-y', wavPath
+        ], { timeout: 60000 }, (err) => {
+          if (err) reject(err); else resolve();
+        });
+      });
+      // Clean up WebM
+      fs.unlink(webmPath, () => {});
+      return wavPath;
+    } catch (convErr) {
+      console.warn('[recording] WAV conversion failed, using WebM:', convErr.message);
+      return webmPath;
+    }
+  });
+
+  // --- File read (for waveform rendering) ---
+  ipcMain.handle('file:read-buffer', (event, filePath) => {
+    const fs = require('fs');
+    return fs.readFileSync(filePath);
   });
 
   // --- Download update ---
