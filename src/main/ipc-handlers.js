@@ -151,10 +151,30 @@ function registerIpcHandlers(ipcMain, dialog) {
       if (result.success !== false && result.words && pendingId) {
         try {
           const duration = result.words.length > 0 ? result.words[result.words.length - 1].end : 0;
+
+          // If trimmed audio, copy from /tmp/ to permanent location
+          let permanentAudioPath = null;
+          if (result.audioPath && result.audioPath !== options.filePath) {
+            try {
+              const fs = require('fs');
+              const path = require('path');
+              const { app } = require('electron');
+              const audioDir = path.join(app.getPath('userData'), 'trimmed-audio');
+              fs.mkdirSync(audioDir, { recursive: true });
+              const dest = path.join(audioDir, `trim_${pendingId}_${Date.now()}.wav`);
+              fs.copyFileSync(result.audioPath, dest);
+              permanentAudioPath = dest;
+              console.log('[transcribe] saved trimmed audio to:', dest);
+            } catch (copyErr) {
+              console.warn('[transcribe] could not save trimmed audio:', copyErr.message);
+            }
+          }
+
           database.completeTranscription(pendingId, {
             text: result.text || '',
             words: result.words,
-            duration
+            duration,
+            audioPath: permanentAudioPath
           });
           result.id = pendingId;
           console.log('[transcribe] completed, id:', pendingId);

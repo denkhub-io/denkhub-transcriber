@@ -107,11 +107,12 @@ document.addEventListener('DOMContentLoaded', () => {
       `<span>${words.length} parole</span>`
     ].filter(Boolean).join('<span style="opacity:0.4;">&middot;</span>');
 
-    // Audio player
+    // Audio player — use trimmed audio if available
     const playerContainer = document.getElementById('historyPlayerContainer');
     const audio = document.getElementById('historyAudioPlayer');
-    if (data.file_path) {
-      audio.src = window.api.getMediaUrl(data.file_path);
+    const audioSrc = data.audio_path || data.file_path;
+    if (audioSrc) {
+      audio.src = window.api.getMediaUrl(audioSrc);
       playerContainer.style.display = '';
     } else {
       playerContainer.style.display = 'none';

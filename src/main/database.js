@@ -30,6 +30,8 @@ function getDb() {
 
   // Add status column if missing (migration for existing DBs)
   try { db.exec(`ALTER TABLE transcriptions ADD COLUMN status TEXT NOT NULL DEFAULT 'done'`); } catch {}
+  // Add audio_path column (for trimmed audio)
+  try { db.exec(`ALTER TABLE transcriptions ADD COLUMN audio_path TEXT`); } catch {}
 
   // One-time FTS rebuild to fix out-of-sync entries from previously missing update trigger
   try {
@@ -83,10 +85,15 @@ function insertTranscription({ filename, filePath, duration, language, model, te
   return result.lastInsertRowid;
 }
 
-function completeTranscription(id, { text, words, duration }) {
+function completeTranscription(id, { text, words, duration, audioPath }) {
   const d = getDb();
-  d.prepare(`UPDATE transcriptions SET full_text = ?, words_json = ?, duration_seconds = ?, status = 'done' WHERE id = ?`)
-    .run(text, JSON.stringify(words), duration, id);
+  if (audioPath) {
+    d.prepare(`UPDATE transcriptions SET full_text = ?, words_json = ?, duration_seconds = ?, audio_path = ?, status = 'done' WHERE id = ?`)
+      .run(text, JSON.stringify(words), duration, audioPath, id);
+  } else {
+    d.prepare(`UPDATE transcriptions SET full_text = ?, words_json = ?, duration_seconds = ?, status = 'done' WHERE id = ?`)
+      .run(text, JSON.stringify(words), duration, id);
+  }
   return { success: true };
 }
 
