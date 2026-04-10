@@ -171,6 +171,17 @@ document.addEventListener('DOMContentLoaded', () => {
       v.style.display = v.id === targetViewId ? '' : 'none';
     });
 
+    // For history: ensure the detail view is shown (not the list)
+    if (activeSource === 'history') {
+      const historyList = document.getElementById('historyList');
+      const historyDetail = document.getElementById('historyDetail');
+      const searchBar = document.querySelector('#historyView .search-bar') ||
+                        (document.getElementById('historySearch') ? document.getElementById('historySearch').parentElement : null);
+      if (historyList) historyList.style.display = 'none';
+      if (historyDetail) historyDetail.style.display = '';
+      if (searchBar) searchBar.style.display = 'none';
+    }
+
     updateVisibility();
   });
 
@@ -248,13 +259,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Reset transcribe clears main audio
+  // Reset transcribe pauses audio but keeps mini player available
   window.addEventListener('reset-transcribe', () => {
-    if (activeSource === 'main') {
-      activeSource = null;
-      activeAudio = null;
-      hide();
+    if (activeAudio && !activeAudio.paused) {
+      activeAudio.pause();
     }
+    updateVisibility();
   });
 
   function formatTime(s) {

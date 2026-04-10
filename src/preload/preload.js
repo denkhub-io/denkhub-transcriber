@@ -34,6 +34,7 @@ contextBridge.exposeInMainWorld('api', {
   updateWords: (id, words) => ipcRenderer.invoke('history:update-words', { id, words }),
   deleteTranscription: (id) => ipcRenderer.invoke('history:delete', id),
   exportTxt: (id) => ipcRenderer.invoke('history:export-txt', id),
+  exportSrt: (id) => ipcRenderer.invoke('history:export-srt', id),
 
   // --- Changelog ---
   shouldShowChangelog: () => ipcRenderer.invoke('app:should-show-changelog'),

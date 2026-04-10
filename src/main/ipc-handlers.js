@@ -216,7 +216,7 @@ function registerIpcHandlers(ipcMain, dialog) {
     const item = database.getTranscription(id);
     if (!item) return { success: false, error: 'Trascrizione non trovata' };
 
-    const win = BrowserWindow.getFocusedWindow();
+    const win = BrowserWindow.fromWebContents(event.sender) || BrowserWindow.getFocusedWindow();
     const result = await dialog.showSaveDialog(win, {
       title: 'Esporta trascrizione',
       defaultPath: item.filename.replace(/\.[^.]+$/, '') + '.txt',
@@ -229,6 +229,28 @@ function registerIpcHandlers(ipcMain, dialog) {
     fs.writeFileSync(result.filePath, item.full_text, 'utf8');
     return { success: true, path: result.filePath };
   });
+  ipcMain.handle('history:export-srt', async (event, id) => {
+    const item = database.getTranscription(id);
+    if (!item) return { success: false, error: 'Trascrizione non trovata' };
+
+    const words = JSON.parse(item.words_json || '[]');
+    if (words.length === 0) return { success: false, error: 'Nessuna parola con timestamp' };
+
+    const win = BrowserWindow.fromWebContents(event.sender) || BrowserWindow.getFocusedWindow();
+    const result = await dialog.showSaveDialog(win, {
+      title: 'Esporta sottotitoli SRT',
+      defaultPath: item.filename.replace(/\.[^.]+$/, '') + '.srt',
+      filters: [{ name: 'SubRip', extensions: ['srt'] }]
+    });
+
+    if (result.canceled) return { success: false };
+
+    const srtContent = wordsToSrt(words);
+    const fs = require('fs');
+    fs.writeFileSync(result.filePath, srtContent, 'utf8');
+    return { success: true, path: result.filePath };
+  });
+
   // --- Changelog ---
   ipcMain.handle('app:should-show-changelog', async () => {
     const { app } = require('electron');
@@ -379,6 +401,66 @@ function registerIpcHandlers(ipcMain, dialog) {
       return null;
     }
   });
+}
+
+// --- SRT generation with intelligent segmentation ---
+function wordsToSrt(words) {
+  const MAX_WORDS = 12;
+  const MAX_DURATION = 5;    // max seconds per subtitle
+  const GAP_THRESHOLD = 0.6; // seconds of silence = new subtitle
+  const SENTENCE_ENDS = /[.!?;:]$/;
+
+  const subtitles = [];
+  let current = [];
+  let startTime = 0;
+
+  function flush() {
+    if (current.length === 0) return;
+    const endTime = current[current.length - 1].end;
+    const text = current.map(w => w.word).join(' ');
+    subtitles.push({ start: startTime, end: endTime, text });
+    current = [];
+  }
+
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+
+    if (current.length === 0) {
+      startTime = w.start;
+    }
+
+    current.push(w);
+
+    const duration = w.end - startTime;
+    const nextWord = words[i + 1];
+    const gap = nextWord ? nextWord.start - w.end : 0;
+    const endsPhrase = SENTENCE_ENDS.test(w.word);
+
+    // Break conditions
+    if (
+      current.length >= MAX_WORDS ||
+      duration >= MAX_DURATION ||
+      (endsPhrase && current.length >= 3) ||
+      gap >= GAP_THRESHOLD
+    ) {
+      flush();
+    }
+  }
+
+  flush();
+
+  // Format SRT
+  return subtitles.map((sub, i) => {
+    return `${i + 1}\n${formatSrtTime(sub.start)} --> ${formatSrtTime(sub.end)}\n${sub.text}\n`;
+  }).join('\n');
+}
+
+function formatSrtTime(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  const ms = Math.round((seconds % 1) * 1000);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')},${String(ms).padStart(3, '0')}`;
 }
 
 module.exports = { registerIpcHandlers };

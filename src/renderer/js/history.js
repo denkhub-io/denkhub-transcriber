@@ -13,9 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
     historyDetail.style.display = 'none';
     searchInput.parentElement.style.display = '';
     currentDetailId = null;
-    // Pause history audio if playing
-    const audio = document.getElementById('historyAudioPlayer');
-    if (audio) audio.pause();
   }
 
   function showDetail() {
@@ -45,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const isPending = item.status === 'pending';
       const el = document.createElement('div');
       el.className = 'surface-card history-item' + (isPending ? ' history-item-pending' : '');
+      if (!isPending) el.style.cursor = 'pointer';
       el.innerHTML = `
         <div class="history-item-info">
           <div class="history-item-name">
@@ -61,26 +59,26 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="history-item-actions">
           ${isPending
             ? '<span style="color: var(--text-secondary); font-size: 0.78rem;">Trascrizione in corso...</span>'
-            : `<button class="btn btn-secondary btn-sm" data-action="open" data-id="${item.id}">Apri</button>
-               <button class="btn btn-ghost btn-sm" data-action="export" data-id="${item.id}">Esporta</button>
-               <button class="btn btn-danger btn-sm" data-action="delete" data-id="${item.id}">Elimina</button>`
+            : `<button class="btn btn-danger btn-sm" data-action="delete" data-id="${item.id}">Elimina</button>`
           }
         </div>
       `;
+
+      // Click anywhere (except delete) opens detail
+      if (!isPending) {
+        el.addEventListener('click', (e) => {
+          if (e.target.closest('[data-action="delete"]')) return;
+          openTranscription(item.id);
+        });
+      }
+
       historyList.appendChild(el);
     });
 
-    // Bind actions
-    historyList.querySelectorAll('[data-action="open"]').forEach(btn => {
-      btn.addEventListener('click', () => openTranscription(parseInt(btn.dataset.id)));
-    });
-
-    historyList.querySelectorAll('[data-action="export"]').forEach(btn => {
-      btn.addEventListener('click', () => window.api.exportTxt(parseInt(btn.dataset.id)));
-    });
-
+    // Bind delete
     historyList.querySelectorAll('[data-action="delete"]').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
         if (!confirm('Eliminare questa trascrizione?')) return;
         await window.api.deleteTranscription(parseInt(btn.dataset.id));
         loadHistory(searchInput.value.trim());
@@ -162,19 +160,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Bind detail actions
     const copyBtn = historyDetail.querySelector('.history-detail-copy');
-    const exportBtn = historyDetail.querySelector('.history-detail-export');
     const deleteBtn = historyDetail.querySelector('.history-detail-delete');
     const editBtn = historyDetail.querySelector('.history-detail-edit');
 
     // Remove old listeners by cloning
     const newCopy = copyBtn.cloneNode(true);
-    const newExport = exportBtn.cloneNode(true);
+    const exportDropdown = historyDetail.querySelector('.export-dropdown');
+    const newExportDropdown = exportDropdown.cloneNode(true);
     const newDelete = deleteBtn.cloneNode(true);
     const newEdit = editBtn.cloneNode(true);
     copyBtn.replaceWith(newCopy);
-    exportBtn.replaceWith(newExport);
+    exportDropdown.replaceWith(newExportDropdown);
     deleteBtn.replaceWith(newDelete);
     editBtn.replaceWith(newEdit);
+
+    // Export dropdown toggle
+    const exportToggleBtn = newExportDropdown.querySelector('.history-detail-export');
+    exportToggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      newExportDropdown.classList.toggle('open');
+    });
+
+    // Close dropdown on outside click
+    document.addEventListener('click', function closeExport(e) {
+      if (!newExportDropdown.contains(e.target)) {
+        newExportDropdown.classList.remove('open');
+      }
+    });
+
+    // Export format items
+    newExportDropdown.querySelectorAll('.export-dropdown-item').forEach(item => {
+      item.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        newExportDropdown.classList.remove('open');
+        const format = item.dataset.format;
+        if (format === 'txt') {
+          await window.api.exportTxt(id);
+        } else if (format === 'srt') {
+          await window.api.exportSrt(id);
+        }
+      });
+    });
 
     // Edit mode toggle
     newEdit.addEventListener('click', () => {
@@ -204,7 +230,6 @@ document.addEventListener('DOMContentLoaded', () => {
     newCopy.addEventListener('click', () => {
       navigator.clipboard.writeText(words.map(w => w.word).join(' '));
     });
-    newExport.addEventListener('click', () => window.api.exportTxt(id));
     newDelete.addEventListener('click', async () => {
       if (window.WordEditMode && window.WordEditMode.isActive()) window.WordEditMode.deactivate();
       if (!confirm('Eliminare questa trascrizione?')) return;

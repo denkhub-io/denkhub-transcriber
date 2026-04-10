@@ -1075,14 +1075,36 @@ document.addEventListener('DOMContentLoaded', () => {
     navigator.clipboard.writeText(text);
   });
 
-  document.getElementById('exportTxtBtn').addEventListener('click', async () => {
-    if (currentTranscriptionId) {
-      await window.api.exportTxt(currentTranscriptionId);
-    } else {
-      // Fallback: copy to clipboard
-      const text = currentWords.map(w => w.word).join(' ');
-      navigator.clipboard.writeText(text);
+  // Result export dropdown
+  const resultExportDropdown = document.getElementById('resultExportDropdown');
+  const resultExportBtn = document.getElementById('resultExportBtn');
+
+  resultExportBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    resultExportDropdown.classList.toggle('open');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!resultExportDropdown.contains(e.target)) {
+      resultExportDropdown.classList.remove('open');
     }
+  });
+
+  resultExportDropdown.querySelectorAll('.export-dropdown-item').forEach(item => {
+    item.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      resultExportDropdown.classList.remove('open');
+      const format = item.dataset.format;
+      if (!currentTranscriptionId) {
+        navigator.clipboard.writeText(currentWords.map(w => w.word).join(' '));
+        return;
+      }
+      if (format === 'txt') {
+        await window.api.exportTxt(currentTranscriptionId);
+      } else if (format === 'srt') {
+        await window.api.exportSrt(currentTranscriptionId);
+      }
+    });
   });
 
   document.getElementById('clearBtn').addEventListener('click', () => {

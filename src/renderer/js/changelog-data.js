@@ -2,6 +2,28 @@
 // Each entry: { version, date, title, changes: [{ category, items }] }
 window.CHANGELOGS = [
   {
+    version: '1.1.4',
+    date: '2026-04-10',
+    title: 'Export SRT e miglioramenti UI',
+    changes: [
+      {
+        category: 'Nuove funzionalità',
+        items: [
+          'Export SRT (sottotitoli) con segmentazione intelligente delle frasi',
+          'Dropdown export unificato TXT/SRT sia in Trascrivi che in Cronologia',
+          'Bottone "Installa ora" nell\'aggiornamento da impostazioni',
+        ]
+      },
+      {
+        category: 'Miglioramenti',
+        items: [
+          'Lista cronologia semplificata: click per aprire, solo bottone Elimina',
+          'Export dialog più affidabile su macOS',
+        ]
+      }
+    ]
+  },
+  {
     version: '1.1.3',
     date: '2025-04-10',
     title: 'Mini player persistente',

@@ -61,7 +61,17 @@ document.addEventListener('DOMContentLoaded', () => {
           updateStatus.innerHTML += ' Scaricamento...';
           const result = await window.api.downloadUpdate(update.downloadUrl);
           if (result && result.success) {
-            updateStatus.innerHTML = `<span style="color: var(--accent-color);">v${update.version} scaricata! Apri il file per installare.</span>`;
+            updateStatus.innerHTML = `<span style="color: var(--accent-color);">v${update.version} pronta!</span> `;
+            const installBtn = document.createElement('button');
+            installBtn.className = 'btn btn-primary btn-sm';
+            installBtn.textContent = 'Installa ora';
+            installBtn.style.marginLeft = '8px';
+            installBtn.addEventListener('click', () => {
+              if (confirm(`Installare la versione ${update.version}? L'app verrà chiusa.`)) {
+                window.api.installUpdate(result.path);
+              }
+            });
+            updateStatus.appendChild(installBtn);
           } else {
             updateStatus.innerHTML = `<span style="color: var(--accent-color);">v${update.version} disponibile.</span> <a href="#" id="updateManualLink" style="color: var(--accent-color);">Scarica manualmente</a>`;
             document.getElementById('updateManualLink')?.addEventListener('click', (e) => {

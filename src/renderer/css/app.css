@@ -18,6 +18,14 @@
   pointer-events: none;
 }
 
+/* --- Global overflow kill --- */
+html, body {
+  overflow: hidden;
+  height: 100%;
+  margin: 0;
+  overscroll-behavior: none;
+}
+
 /* --- App Layout --- */
 .app-layout {
   display: flex;
@@ -25,10 +33,10 @@
   overflow: hidden;
 }
 
-/* --- Sidebar (72px icon rail) --- */
+/* --- Sidebar (90px icon rail) --- */
 .sidebar {
-  width: 72px;
-  min-width: 72px;
+  width: 90px;
+  min-width: 90px;
   background: rgba(22, 22, 24, 0.82);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
@@ -36,7 +44,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 48px;
+  padding-top: 72px;
   -webkit-app-region: drag;
   z-index: 10;
 }
@@ -45,7 +53,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 0 20px;
+  padding: 4px 0 16px;
   -webkit-app-region: drag;
 }
 
@@ -144,13 +152,13 @@
 /* --- Main Content --- */
 .app-content {
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
   padding-top: 38px;
-  scroll-behavior: smooth;
 }
 
 .view {
   animation: viewFadeIn 280ms ease;
+  height: 100%;
 }
 
 @keyframes viewFadeIn {
@@ -161,7 +169,20 @@
 .view-content {
   max-width: 920px;
   margin: 0 auto;
-  padding: var(--space-lg) var(--space-lg);
+  padding: var(--space-md) var(--space-lg) var(--space-sm);
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* Only settings/models/history list need internal scroll */
+#settingsView .view-content,
+#modelsView .view-content,
+#historyView .view-content {
+  overflow-y: auto;
+}
+
+#transcribeView .view-content {
+  overflow: hidden;
 }
 
 /* ============================================================
@@ -200,7 +221,7 @@
 .update-banner {
   position: fixed;
   top: 38px;
-  left: 72px;
+  left: 90px;
   right: 0;
   z-index: 99;
   display: flex;
@@ -837,6 +858,17 @@ select.field {
 .result-container {
   margin-top: var(--space-md);
   animation: viewFadeIn 300ms ease;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 140px);
+  overflow: hidden;
+}
+
+#historyDetail {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 180px);
+  overflow: hidden;
 }
 
 .result-header {
@@ -1010,13 +1042,13 @@ audio {
   background: rgba(255, 255, 255, 0.015);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--radius-md);
-  padding: var(--space-lg) var(--space-md);
-  min-height: 240px;
-  max-height: calc(100vh - 340px);
+  padding: var(--space-sm) var(--space-md) var(--space-xl);
+  min-height: 0;
   overflow-y: auto;
   line-height: 2;
   font-size: 0.95rem;
   letter-spacing: 0.005em;
+  flex: 1;
 }
 
 .word {
@@ -1104,7 +1136,7 @@ audio {
 
 .history-item-pending {
   opacity: 0.5;
-  pointer-events: none;
+  cursor: default;
 }
 
 /* ============================================================
@@ -1858,20 +1890,22 @@ audio {
 
 .mini-player {
   position: fixed;
-  bottom: 0;
-  left: 72px;
-  right: 0;
+  bottom: 16px;
+  left: calc(90px + 20px);
+  right: 20px;
   height: 52px;
-  background: rgba(18, 18, 20, 0.94);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(30, 30, 34, 0.72);
+  backdrop-filter: blur(40px) saturate(1.6);
+  -webkit-backdrop-filter: blur(40px) saturate(1.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
   z-index: 50;
   transition: transform 250ms ease, opacity 250ms ease;
 }
 
 .mini-player.slide-out {
-  transform: translateY(100%);
+  transform: translateY(calc(100% + 20px));
   pointer-events: none;
 }
 
@@ -2017,7 +2051,93 @@ audio {
   color: #fff;
 }
 
-/* --- Content padding when mini player is visible --- */
+/* --- Adjustments when mini player is visible --- */
 .app-content.has-mini-player {
-  padding-bottom: 56px;
+  padding-bottom: 80px;
 }
+
+/* ============================================================
+   EXPORT DROPDOWN
+   ============================================================ */
+
+.export-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.export-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 220px;
+  background: rgba(28, 28, 32, 0.95);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 6px;
+  z-index: 60;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  animation: exportDropdownIn 150ms ease;
+}
+
+@keyframes exportDropdownIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.export-dropdown.open .export-dropdown-menu {
+  display: block;
+}
+
+.export-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-primary);
+  transition: background 150ms;
+}
+
+.export-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.export-format-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(41, 151, 255, 0.12);
+  color: var(--accent-color);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.export-format-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.export-format-name {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.export-format-desc {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+}
+
