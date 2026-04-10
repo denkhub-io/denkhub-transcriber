@@ -34,7 +34,7 @@ mac:
         - arm64
 
 dmg:
-  artifactName: "DenkHub-Transcriber-${version}-${arch}.dmg"
+  artifactName: "DenkHub-Transcriber-mac.dmg"
 
 win:
   icon: assets/icon.png
@@ -51,7 +51,7 @@ win:
 nsis:
   oneClick: true
   perMachine: false
-  artifactName: "DenkHub-Transcriber-Setup-${version}.exe"
+  artifactName: "DenkHub-Transcriber-Setup.exe"
 
 npmRebuild: true
 
