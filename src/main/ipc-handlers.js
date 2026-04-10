@@ -251,6 +251,11 @@ function registerIpcHandlers(ipcMain, dialog) {
     return { success: true, path: result.filePath };
   });
 
+  ipcMain.handle('app:get-version', () => {
+    const { app } = require('electron');
+    return app.getVersion();
+  });
+
   // --- Changelog ---
   ipcMain.handle('app:should-show-changelog', async () => {
     const { app } = require('electron');

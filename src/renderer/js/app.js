@@ -1,3 +1,9 @@
+// Populate version strings
+window.api.getVersion().then(v => {
+  document.getElementById('sidebarVersion').textContent = `v${v}`;
+  document.getElementById('settingsVersion').textContent = `Transcriber v${v}`;
+});
+
 // Check for updates on startup
 window.api.checkUpdate().then(async (update) => {
   if (!update) return;
