@@ -22,6 +22,12 @@ asarUnpack:
 mac:
   category: public.app-category.productivity
   icon: assets/icon.icns
+  extraResources:
+    - from: vendor/darwin/
+      to: vendor/darwin/
+      filter:
+        - "**/*"
+        - "!**/._*"
   target:
     - target: dmg
       arch:

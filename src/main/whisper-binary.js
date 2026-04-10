@@ -20,30 +20,25 @@ function getBundledBinaryPath() {
   const baseDir = path.join(__dirname, '..', '..');
 
   const possiblePaths = [];
+  const platformDir = process.platform === 'win32' ? 'win32' : 'darwin';
 
-  // Vendor directory (pre-downloaded platform binaries)
-  if (process.platform === 'win32') {
-    // extraResources lands in process.resourcesPath
-    if (process.resourcesPath) {
-      possiblePaths.push(path.join(process.resourcesPath, 'vendor', 'win32', execName));
-    }
-    // Dev mode / direct run
-    possiblePaths.push(path.join(baseDir, 'vendor', 'win32', execName));
-    // asar-unpacked fallback
-    possiblePaths.push(path.join(baseDir.replace('app.asar', 'app.asar.unpacked'), 'vendor', 'win32', execName));
-
-    console.log('[whisper-binary] searching win32 paths:', possiblePaths.map(p => `${p} (${fs.existsSync(p) ? 'EXISTS' : 'missing'})`));
+  // Vendor directory (extraResources lands in process.resourcesPath)
+  if (process.resourcesPath) {
+    possiblePaths.push(path.join(process.resourcesPath, 'vendor', platformDir, execName));
   }
+  // Dev mode / direct run
+  possiblePaths.push(path.join(baseDir, 'vendor', platformDir, execName));
+  // asar-unpacked fallback
+  possiblePaths.push(path.join(baseDir.replace('app.asar', 'app.asar.unpacked'), 'vendor', platformDir, execName));
 
-  // nodejs-whisper compiled binary (works on macOS)
+  console.log(`[whisper-binary] searching ${platformDir} paths:`, possiblePaths.map(p => `${p} (${fs.existsSync(p) ? 'EXISTS' : 'missing'})`));
+
+  // nodejs-whisper compiled binary (legacy fallback)
   const cppBase = path.join(baseDir, 'node_modules', 'nodejs-whisper', 'cpp', 'whisper.cpp');
   possiblePaths.push(
     path.join(cppBase, 'build', 'bin', execName),
-    path.join(cppBase, 'build', 'bin', 'Release', execName),
-    path.join(cppBase, 'build', execName),
-    path.join(cppBase, execName)
+    path.join(cppBase, 'build', 'bin', 'Release', execName)
   );
-  // asar-unpacked variants
   const cppBaseUnpacked = cppBase.replace('app.asar', 'app.asar.unpacked');
   possiblePaths.push(
     path.join(cppBaseUnpacked, 'build', 'bin', execName),

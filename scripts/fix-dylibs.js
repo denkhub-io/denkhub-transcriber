@@ -21,8 +21,13 @@ exports.default = async function afterPack(context) {
   const appOutDir = context.appOutDir;
   const appName = context.packager.appInfo.productFilename;
   const resourcesDir = path.join(appOutDir, `${appName}.app`, 'Contents', 'Resources');
+  // Check vendor/darwin (new location via extraResources)
+  const vendorDir = path.join(resourcesDir, 'vendor', 'darwin');
+  // Fallback: nodejs-whisper in asar.unpacked (legacy)
   const unpackedBase = path.join(resourcesDir, 'app.asar.unpacked', 'node_modules', 'nodejs-whisper', 'cpp', 'whisper.cpp', 'build');
-  const binaryPath = path.join(unpackedBase, 'bin', 'whisper-cli');
+  const binaryPath = fs.existsSync(path.join(vendorDir, 'whisper-cli'))
+    ? path.join(vendorDir, 'whisper-cli')
+    : path.join(unpackedBase, 'bin', 'whisper-cli');
 
   if (!fs.existsSync(binaryPath)) {
     console.log('[fix-dylibs] whisper-cli not found, skipping:', binaryPath);
@@ -42,13 +47,16 @@ exports.default = async function afterPack(context) {
 
   console.log('[fix-dylibs] Current rpaths:', currentRpaths);
 
-  // The correct relative rpaths (from build/bin/ to each dylib directory)
-  const correctRpaths = [
-    '@executable_path/../src',                   // libwhisper.1.dylib
-    '@executable_path/../ggml/src',              // libggml.dylib, libggml-base.dylib, libggml-cpu.dylib
-    '@executable_path/../ggml/src/ggml-blas',    // libggml-blas.dylib
-    '@executable_path/../ggml/src/ggml-metal',   // libggml-metal.dylib
-  ];
+  // Determine correct rpaths based on layout
+  const isVendorLayout = binaryPath.includes('vendor/darwin');
+  const correctRpaths = isVendorLayout
+    ? ['@executable_path/lib']  // vendor/darwin/lib/ has all dylibs flat
+    : [
+        '@executable_path/../src',                   // libwhisper.1.dylib
+        '@executable_path/../ggml/src',              // libggml.dylib, libggml-base.dylib, libggml-cpu.dylib
+        '@executable_path/../ggml/src/ggml-blas',    // libggml-blas.dylib
+        '@executable_path/../ggml/src/ggml-metal',   // libggml-metal.dylib
+      ];
 
   // Remove all existing rpaths
   for (const rp of currentRpaths) {
@@ -79,12 +87,14 @@ exports.default = async function afterPack(context) {
   console.log('[fix-dylibs] New rpaths:', newRpaths);
 
   // Also fix dylib cross-references (each dylib may reference others via absolute paths)
-  const dylibDirs = [
-    path.join(unpackedBase, 'src'),
-    path.join(unpackedBase, 'ggml', 'src'),
-    path.join(unpackedBase, 'ggml', 'src', 'ggml-blas'),
-    path.join(unpackedBase, 'ggml', 'src', 'ggml-metal'),
-  ];
+  const dylibDirs = isVendorLayout
+    ? [path.join(path.dirname(binaryPath), 'lib')]
+    : [
+        path.join(unpackedBase, 'src'),
+        path.join(unpackedBase, 'ggml', 'src'),
+        path.join(unpackedBase, 'ggml', 'src', 'ggml-blas'),
+        path.join(unpackedBase, 'ggml', 'src', 'ggml-metal'),
+      ];
 
   for (const dir of dylibDirs) {
     if (!fs.existsSync(dir)) continue;
