@@ -1,4 +1,4 @@
-/* DenkHub Transcriber v1.1.2 — Refined Studio Design
+/* DenkHub Transcriber v1.1.3 — Refined Studio Design
    Built on top of denkhub-core.css
    Aesthetic: professional audio workspace — slim, spacious, precise */
 
@@ -1850,4 +1850,174 @@ audio {
 
 .changelog-accordion-item.open .changelog-accordion-body {
   display: block;
+}
+
+/* ============================================================
+   MINI PLAYER BAR — Spotify-style persistent bottom bar
+   ============================================================ */
+
+.mini-player {
+  position: fixed;
+  bottom: 0;
+  left: 72px;
+  right: 0;
+  height: 52px;
+  background: rgba(18, 18, 20, 0.94);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  z-index: 50;
+  transition: transform 250ms ease, opacity 250ms ease;
+}
+
+.mini-player.slide-out {
+  transform: translateY(100%);
+  pointer-events: none;
+}
+
+.mini-player-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 100%;
+  padding: 0 20px;
+}
+
+/* --- Name / source link --- */
+.mini-player-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 6px;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 150ms;
+  flex-shrink: 0;
+}
+
+.mini-player-name:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.mini-player-name svg {
+  color: var(--accent-color);
+  flex-shrink: 0;
+}
+
+#miniPlayerNameText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Controls --- */
+.mini-player-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.mini-player-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 150ms, background 150ms;
+}
+
+.mini-player-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.mini-player-play {
+  color: var(--text-primary);
+}
+
+/* --- Track / seek bar --- */
+.mini-player-track {
+  flex: 1;
+  min-width: 80px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  cursor: pointer;
+  position: relative;
+  transition: height 150ms;
+}
+
+.mini-player-track:hover {
+  height: 6px;
+}
+
+.mini-player-track-fill {
+  height: 100%;
+  background: var(--accent-color);
+  border-radius: 2px;
+  width: 0;
+  pointer-events: none;
+}
+
+/* --- Time display --- */
+.mini-player-time {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  min-width: 28px;
+}
+
+.mini-player-sep {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+}
+
+/* --- Speed buttons --- */
+.mini-player-speed {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.mini-speed-btn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 150ms;
+}
+
+.mini-speed-btn:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--text-primary);
+}
+
+.mini-speed-btn.active {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #fff;
+}
+
+/* --- Content padding when mini player is visible --- */
+.app-content.has-mini-player {
+  padding-bottom: 56px;
 }

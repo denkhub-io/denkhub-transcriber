@@ -2,6 +2,29 @@
 // Each entry: { version, date, title, changes: [{ category, items }] }
 window.CHANGELOGS = [
   {
+    version: '1.1.3',
+    date: '2025-04-10',
+    title: 'Mini player persistente',
+    changes: [
+      {
+        category: 'Nuove funzionalità',
+        items: [
+          'Mini player in stile Spotify fisso in basso durante la navigazione',
+          'Controlli play/pausa, restart, avanti/indietro 10s e barra di seek',
+          'Selettore velocità (1x, 1.5x, 2x) nel mini player',
+          'Click sul nome audio per tornare alla sorgente',
+        ]
+      },
+      {
+        category: 'Correzioni',
+        items: [
+          'Audio trimmed ora caricato correttamente dalla cronologia',
+          'Fix whisper-cli non trovato su macOS in modalità sviluppo',
+        ]
+      }
+    ]
+  },
+  {
     version: '1.1.0',
     date: '2025-04-10',
     title: 'Trimmer audio, registrazione e editor parole',

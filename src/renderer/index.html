@@ -58,7 +58,7 @@
       </nav>
 
       <div class="sidebar-footer">
-        <span class="sidebar-version">v1.1.2</span>
+        <span class="sidebar-version">v1.1.3</span>
       </div>
     </aside>
 
@@ -482,7 +482,7 @@
               <h3 style="margin-bottom: var(--space-xs);">Informazioni</h3>
               <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
                 <img src="../../denkhub-kit/assets/denkhub-logo.svg" alt="DenkHub" style="height: 24px;">
-                <span style="color: var(--text-secondary); font-size: 0.85rem;">Transcriber v1.1.2</span>
+                <span style="color: var(--text-secondary); font-size: 0.85rem;">Transcriber v1.1.3</span>
               </div>
               <p style="color: var(--text-secondary); font-size: 0.82rem;">
                 Trascrizione audio e video locale con Whisper. Nessun dato viene inviato a server esterni.
@@ -510,6 +510,46 @@
     </main>
   </div>
 
+  <!-- Mini Player Bar -->
+  <div id="miniPlayer" class="mini-player" style="display: none;">
+    <div class="mini-player-inner">
+      <button class="mini-player-name" id="miniPlayerName" title="Vai alla sorgente">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span id="miniPlayerNameText">--</span>
+      </button>
+
+      <div class="mini-player-controls">
+        <button class="mini-player-btn" id="miniRestart" title="Ricomincia">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+        </button>
+        <button class="mini-player-btn" id="miniSkipBack" title="-10s">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
+        </button>
+        <button class="mini-player-btn mini-player-play" id="miniPlayPause" title="Play/Pausa">
+          <svg class="mini-play-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <svg class="mini-pause-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+        </button>
+        <button class="mini-player-btn" id="miniSkipForward" title="+10s">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+        </button>
+      </div>
+
+      <div class="mini-player-track" id="miniPlayerTrack">
+        <div class="mini-player-track-fill" id="miniPlayerTrackFill"></div>
+      </div>
+
+      <span class="mini-player-time" id="miniCurrentTime">0:00</span>
+      <span class="mini-player-sep">/</span>
+      <span class="mini-player-time" id="miniDuration">0:00</span>
+
+      <div class="mini-player-speed">
+        <button class="mini-speed-btn active" data-speed="1">1x</button>
+        <button class="mini-speed-btn" data-speed="1.5">1.5x</button>
+        <button class="mini-speed-btn" data-speed="2">2x</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Changelog Modal -->
   <div id="changelogModal" class="changelog-modal-overlay" style="display: none;">
     <div class="changelog-modal">
@@ -533,6 +573,7 @@
   <script src="js/models.js"></script>
   <script src="js/history.js"></script>
   <script src="js/player.js"></script>
+  <script src="js/mini-player.js"></script>
   <script src="js/word-editor.js"></script>
   <script src="js/settings-view.js"></script>
   <script src="js/changelog.js"></script>
