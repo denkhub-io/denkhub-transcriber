@@ -172,17 +172,7 @@ html, body {
   padding: var(--space-md) var(--space-lg) var(--space-sm);
   height: 100%;
   box-sizing: border-box;
-}
-
-/* Only settings/models/history list need internal scroll */
-#settingsView .view-content,
-#modelsView .view-content,
-#historyView .view-content {
   overflow-y: auto;
-}
-
-#transcribeView .view-content {
-  overflow: hidden;
 }
 
 /* ============================================================
