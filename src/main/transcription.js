@@ -241,7 +241,7 @@ async function transcribe(options, onProgress) {
 
   return new Promise((resolve, reject) => {
     const proc = execFile(whisperCli, args, {
-      timeout: 600000, // 10 min max
+      timeout: 0, // no timeout — long videos can take hours
       maxBuffer: 50 * 1024 * 1024 // 50MB buffer for large outputs
     }, (err, stdout, stderr) => {
       console.log('[transcribe] done. err:', err ? err.message : 'none');

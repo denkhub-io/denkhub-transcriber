@@ -21,6 +21,12 @@ exports.default = async function afterPack(context) {
   const appOutDir = context.appOutDir;
   const appName = context.packager.appInfo.productFilename;
   const resourcesDir = path.join(appOutDir, `${appName}.app`, 'Contents', 'Resources');
+
+  // Clean up macOS AppleDouble resource fork files (._*)
+  // These break codesign and asar integrity on exFAT/non-HFS+ volumes
+  const appDir = path.join(appOutDir, `${appName}.app`);
+  cleanDotUnderscore(appDir);
+  console.log('[fix-dylibs] Cleaned AppleDouble ._* files from app bundle');
   // Check vendor/darwin (new location via extraResources)
   const vendorDir = path.join(resourcesDir, 'vendor', 'darwin');
   // Fallback: nodejs-whisper in asar.unpacked (legacy)
@@ -107,6 +113,21 @@ exports.default = async function afterPack(context) {
 
   console.log('[fix-dylibs] Done!');
 };
+
+function cleanDotUnderscore(dir) {
+  try {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        cleanDotUnderscore(fullPath);
+      } else if (entry.name.startsWith('._')) {
+        fs.unlinkSync(fullPath);
+        console.log('[fix-dylibs] Removed AppleDouble file:', fullPath);
+      }
+    }
+  } catch (e) { /* ignore */ }
+}
 
 function fixDylibRpaths(dylibPath) {
   try {

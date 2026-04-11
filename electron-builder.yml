@@ -17,6 +17,7 @@ files:
 asarUnpack:
   - "node_modules/ffmpeg-static/**"
   - "node_modules/nodejs-whisper/**"
+  - "!node_modules/nodejs-whisper/cpp/**"
   - "node_modules/better-sqlite3/**"
 
 mac:
@@ -54,5 +55,8 @@ nsis:
   artifactName: "DenkHub-Transcriber-Setup.exe"
 
 npmRebuild: true
+asar:
+  smartUnpack: true
+electronLanguages: ["en", "it"]
 
 afterPack: scripts/fix-dylibs.js
