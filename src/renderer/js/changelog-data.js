@@ -2,6 +2,40 @@
 // Each entry: { version, date, title, changes: [{ category, items }] }
 window.CHANGELOGS = [
   {
+    version: '1.1.6',
+    date: '2026-04-13',
+    title: 'Fix trascrizione video lunghi',
+    changes: [
+      {
+        category: 'Bug fix',
+        items: [
+          'Rimosso timeout 10 minuti sulla trascrizione: ora video di qualsiasi durata funzionano senza interruzione',
+        ]
+      },
+      {
+        category: 'Miglioramenti',
+        items: [
+          'Fix build su volumi exFAT (pulizia automatica file AppleDouble)',
+          'Aggiornamento electron-builder a v26',
+        ]
+      }
+    ]
+  },
+  {
+    version: '1.1.5',
+    date: '2026-04-11',
+    title: 'Versione dinamica e fix UI',
+    changes: [
+      {
+        category: 'Miglioramenti',
+        items: [
+          'Versione mostrata dinamicamente da package.json',
+          'Fix vista cronologia e scroll trascrizione',
+        ]
+      }
+    ]
+  },
+  {
     version: '1.1.4',
     date: '2026-04-10',
     title: 'Export SRT e miglioramenti UI',
