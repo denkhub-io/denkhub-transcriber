@@ -303,8 +303,18 @@ function registerIpcHandlers(ipcMain, dialog) {
 
       if (!config.mcpServers) config.mcpServers = {};
 
+      // On Windows use bundled node.exe, on macOS use system node
+      let nodeCommand = 'node';
+      if (process.platform === 'win32') {
+        if (app.isPackaged) {
+          nodeCommand = path.join(process.resourcesPath, 'vendor', 'win32', 'node.exe');
+        } else {
+          nodeCommand = path.join(__dirname, '..', '..', 'vendor', 'win32', 'node.exe');
+        }
+      }
+
       config.mcpServers['denkhub-transcriber'] = {
-        command: 'node',
+        command: nodeCommand,
         args: [mcpServerPath],
       };
 
