@@ -2,6 +2,39 @@
 // Each entry: { version, date, title, changes: [{ category, items }] }
 window.CHANGELOGS = [
   {
+    version: '1.2.0',
+    date: '2026-04-14',
+    title: 'Integrazione Claude (MCP Server)',
+    changes: [
+      {
+        category: 'Nuova funzionalità',
+        items: [
+          'Server MCP integrato: trascrivi file e consulta la cronologia direttamente da Claude',
+          'Bottone "Aggiungi a Claude" nelle Impostazioni per configurazione one-click',
+          'Bottone "Scollega" per rimuovere l\'integrazione',
+          'Supporto cross-platform (macOS + Windows)',
+        ]
+      },
+      {
+        category: 'MCP Tools',
+        items: [
+          'transcribe — trascrivi qualsiasi file audio/video',
+          'list_transcriptions — cerca nella cronologia',
+          'get_transcription — testo completo con timestamp',
+          'export_srt — esporta sottotitoli SRT',
+          'list_models / download_model — gestisci modelli Whisper',
+        ]
+      },
+      {
+        category: 'Miglioramenti',
+        items: [
+          'Default automatico al modello Whisper più pesante installato',
+          'Accetta file allegati in chat Claude (base64)',
+        ]
+      }
+    ]
+  },
+  {
     version: '1.1.6',
     date: '2026-04-13',
     title: 'Fix trascrizione video lunghi',

@@ -781,6 +781,90 @@ function downloadFile(url, destPath, expectedBytes) {
   });
 }
 
+// --- Tool: export_srt ---
+
+// SRT generation with intelligent segmentation (same logic as Electron app)
+function wordsToSrt(words) {
+  const MAX_WORDS = 12;
+  const MAX_DURATION = 5;
+  const GAP_THRESHOLD = 0.6;
+  const SENTENCE_ENDS = /[.!?;:]$/;
+
+  const subtitles = [];
+  let current = [];
+  let startTime = 0;
+
+  function flush() {
+    if (current.length === 0) return;
+    const endTime = current[current.length - 1].end;
+    const text = current.map(w => w.word).join(' ');
+    subtitles.push({ start: startTime, end: endTime, text });
+    current = [];
+  }
+
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    if (current.length === 0) startTime = w.start;
+    current.push(w);
+    const duration = w.end - startTime;
+    const nextWord = words[i + 1];
+    const gap = nextWord ? nextWord.start - w.end : 0;
+    const endsPhrase = SENTENCE_ENDS.test(w.word);
+    if (current.length >= MAX_WORDS || duration >= MAX_DURATION || (endsPhrase && current.length >= 3) || gap >= GAP_THRESHOLD) {
+      flush();
+    }
+  }
+  flush();
+
+  return subtitles.map((sub, i) => {
+    const fmt = (sec) => {
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = Math.floor(sec % 60);
+      const ms = Math.round((sec % 1) * 1000);
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')},${String(ms).padStart(3, '0')}`;
+    };
+    return `${i + 1}\n${fmt(sub.start)} --> ${fmt(sub.end)}\n${sub.text}\n`;
+  }).join('\n');
+}
+
+server.tool(
+  'export_srt',
+  'Export a transcription as SRT subtitle file. Returns the SRT content and optionally saves it to disk.',
+  {
+    id: z.number().describe('Transcription ID to export'),
+    save_path: z.string().optional().describe('Optional: absolute path to save the .srt file. If omitted, returns SRT content only.'),
+  },
+  async ({ id, save_path: savePath }) => {
+    const d = getDb();
+    const t = d.prepare('SELECT * FROM transcriptions WHERE id = ?').get(id);
+
+    if (!t) {
+      return { content: [{ type: 'text', text: `Trascrizione con id ${id} non trovata.` }], isError: true };
+    }
+
+    let words = [];
+    try { words = JSON.parse(t.words_json); } catch {}
+
+    if (words.length === 0) {
+      return { content: [{ type: 'text', text: `Nessun timestamp disponibile per la trascrizione ${id}. Impossibile generare SRT.` }], isError: true };
+    }
+
+    const srt = wordsToSrt(words);
+
+    if (savePath) {
+      try {
+        fs.writeFileSync(savePath, srt, 'utf8');
+        return { content: [{ type: 'text', text: `SRT salvato in: ${savePath}\n\n${srt}` }] };
+      } catch (e) {
+        return { content: [{ type: 'text', text: `Errore salvataggio: ${e.message}\n\nContenuto SRT:\n${srt}` }], isError: true };
+      }
+    }
+
+    return { content: [{ type: 'text', text: srt }] };
+  }
+);
+
 // ---------------------------------------------------------------------------
 // Start
 // ---------------------------------------------------------------------------
