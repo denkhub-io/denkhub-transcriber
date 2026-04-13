@@ -270,6 +270,92 @@ function registerIpcHandlers(ipcMain, dialog) {
     return true;
   });
 
+  // --- MCP: Add to Claude Desktop ---
+  ipcMain.handle('mcp:add-to-claude', async () => {
+    const fs = require('fs');
+    const path = require('path');
+    const os = require('os');
+    const { app } = require('electron');
+
+    // Claude Desktop config path (macOS vs Windows)
+    const claudeConfigDir = process.platform === 'win32'
+      ? path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'Claude')
+      : path.join(os.homedir(), 'Library', 'Application Support', 'Claude');
+    const claudeConfigPath = path.join(claudeConfigDir, 'claude_desktop_config.json');
+
+    // Determine the MCP server entry point
+    // In packaged app: resources/mcp-server/index.js
+    // In dev mode: <project>/mcp-server/index.js
+    let mcpServerPath;
+    if (app.isPackaged) {
+      mcpServerPath = path.join(process.resourcesPath, 'mcp-server', 'index.js');
+    } else {
+      mcpServerPath = path.join(__dirname, '..', '..', 'mcp-server', 'index.js');
+    }
+
+    try {
+      // Read existing config or create new
+      let config = {};
+      fs.mkdirSync(claudeConfigDir, { recursive: true });
+      try {
+        config = JSON.parse(fs.readFileSync(claudeConfigPath, 'utf8'));
+      } catch {}
+
+      if (!config.mcpServers) config.mcpServers = {};
+
+      config.mcpServers['denkhub-transcriber'] = {
+        command: 'node',
+        args: [mcpServerPath],
+      };
+
+      fs.writeFileSync(claudeConfigPath, JSON.stringify(config, null, 2), 'utf8');
+
+      return { success: true, path: claudeConfigPath };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('mcp:check-claude', async () => {
+    const fs = require('fs');
+    const path = require('path');
+    const os = require('os');
+
+    const claudeConfigPath = path.join(
+      process.platform === 'win32'
+        ? (process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'))
+        : path.join(os.homedir(), 'Library', 'Application Support'),
+      'Claude', 'claude_desktop_config.json');
+    try {
+      const config = JSON.parse(fs.readFileSync(claudeConfigPath, 'utf8'));
+      return !!(config.mcpServers && config.mcpServers['denkhub-transcriber']);
+    } catch {
+      return false;
+    }
+  });
+
+  ipcMain.handle('mcp:remove-from-claude', async () => {
+    const fs = require('fs');
+    const path = require('path');
+    const os = require('os');
+
+    const claudeConfigPath = path.join(
+      process.platform === 'win32'
+        ? (process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'))
+        : path.join(os.homedir(), 'Library', 'Application Support'),
+      'Claude', 'claude_desktop_config.json');
+    try {
+      const config = JSON.parse(fs.readFileSync(claudeConfigPath, 'utf8'));
+      if (config.mcpServers && config.mcpServers['denkhub-transcriber']) {
+        delete config.mcpServers['denkhub-transcriber'];
+        fs.writeFileSync(claudeConfigPath, JSON.stringify(config, null, 2), 'utf8');
+      }
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
   // --- Utility ---
   ipcMain.handle('app:open-external', (event, url) => {
     const { shell } = require('electron');

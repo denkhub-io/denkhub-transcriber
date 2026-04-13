@@ -50,6 +50,66 @@ document.addEventListener('DOMContentLoaded', () => {
     window.api.updateSettings({ autoUpdate: autoUpdateCheckbox.checked });
   });
 
+  // --- Claude MCP integration ---
+  const claudeBtn = document.getElementById('settingsAddClaude');
+  const claudeRemoveBtn = document.getElementById('settingsRemoveClaude');
+  const claudeLabel = document.getElementById('settingsClaudeLabel');
+  const claudeStatus = document.getElementById('settingsClaudeStatus');
+
+  async function updateClaudeStatus() {
+    const connected = await window.api.checkClaudeConnected();
+    if (connected) {
+      claudeBtn.classList.add('connected');
+      claudeLabel.textContent = 'Connesso a Claude';
+      claudeRemoveBtn.style.display = '';
+      claudeStatus.textContent = '';
+    } else {
+      claudeBtn.classList.remove('connected');
+      claudeLabel.textContent = 'Aggiungi a Claude';
+      claudeRemoveBtn.style.display = 'none';
+      claudeStatus.textContent = '';
+    }
+  }
+
+  updateClaudeStatus();
+
+  claudeBtn.addEventListener('click', async () => {
+    if (claudeBtn.classList.contains('connected')) return;
+
+    claudeBtn.disabled = true;
+    claudeLabel.textContent = 'Configurazione...';
+
+    const result = await window.api.addToClaude();
+    if (result.success) {
+      claudeBtn.classList.add('connected');
+      claudeLabel.textContent = 'Connesso a Claude';
+      claudeRemoveBtn.style.display = '';
+      claudeStatus.textContent = 'Riavvia Claude Desktop per attivare.';
+      claudeStatus.style.color = 'var(--accent-color)';
+    } else {
+      claudeLabel.textContent = 'Aggiungi a Claude';
+      claudeStatus.textContent = 'Errore: ' + result.error;
+      claudeStatus.style.color = '#e57373';
+    }
+    claudeBtn.disabled = false;
+  });
+
+  claudeRemoveBtn.addEventListener('click', async () => {
+    claudeRemoveBtn.disabled = true;
+    const result = await window.api.removeFromClaude();
+    if (result.success) {
+      claudeBtn.classList.remove('connected');
+      claudeLabel.textContent = 'Aggiungi a Claude';
+      claudeRemoveBtn.style.display = 'none';
+      claudeStatus.textContent = 'Scollegato. Riavvia Claude Desktop.';
+      claudeStatus.style.color = 'var(--text-secondary)';
+    } else {
+      claudeStatus.textContent = 'Errore: ' + result.error;
+      claudeStatus.style.color = '#e57373';
+    }
+    claudeRemoveBtn.disabled = false;
+  });
+
   checkUpdateBtn.addEventListener('click', async () => {
     updateStatus.textContent = 'Controllo in corso...';
     checkUpdateBtn.disabled = true;

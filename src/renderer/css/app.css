@@ -1280,6 +1280,61 @@ audio {
 }
 
 /* ============================================================
+   CLAUDE / MCP INTEGRATION BUTTON
+   ============================================================ */
+
+.btn-claude-connect {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 200ms ease;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.btn-claude-connect:hover {
+  background: rgba(217, 119, 87, 0.12);
+  border-color: rgba(217, 119, 87, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(217, 119, 87, 0.15);
+}
+
+.btn-claude-connect:active {
+  transform: translateY(0);
+}
+
+.btn-claude-connect:disabled {
+  opacity: 0.6;
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-claude-connect.connected {
+  background: rgba(217, 119, 87, 0.08);
+  border-color: rgba(217, 119, 87, 0.25);
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+.btn-claude-connect.connected:hover {
+  transform: none;
+  box-shadow: none;
+  background: rgba(217, 119, 87, 0.08);
+}
+
+.btn-claude-connect .claude-icon {
+  flex-shrink: 0;
+}
+
+/* ============================================================
    SETUP WIZARD
    ============================================================ */
 

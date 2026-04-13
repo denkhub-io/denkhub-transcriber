@@ -51,6 +51,11 @@ contextBridge.exposeInMainWorld('api', {
   // --- Recording ---
   saveRecording: (buffer, ext) => ipcRenderer.invoke('recording:save', { buffer, ext }),
 
+  // --- MCP / Claude integration ---
+  addToClaude: () => ipcRenderer.invoke('mcp:add-to-claude'),
+  removeFromClaude: () => ipcRenderer.invoke('mcp:remove-from-claude'),
+  checkClaudeConnected: () => ipcRenderer.invoke('mcp:check-claude'),
+
   // --- Utility ---
   openExternal: (url) => ipcRenderer.invoke('app:open-external', url),
   getMediaUrl: (filePath) => `media://${encodeURIComponent(filePath)}`,

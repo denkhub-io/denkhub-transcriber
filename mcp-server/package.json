@@ -1,0 +1,14 @@
+{
+  "name": "denkhub-transcriber-mcp",
+  "version": "1.2.0",
+  "description": "MCP server for DenkHub Transcriber — transcribe files and query history from Claude Code/Desktop",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "better-sqlite3": "^11.0.0",
+    "fluent-ffmpeg": "^2.1.3"
+  }
+}
