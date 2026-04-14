@@ -16,6 +16,24 @@ const path = require('path');
 const fs = require('fs');
 
 exports.default = async function afterPack(context) {
+  // Copy mcp-server/node_modules into the packaged resources
+  // (electron-builder excludes node_modules from extraResources by default)
+  const srcModules = path.join(context.packager.projectDir, 'mcp-server', 'node_modules');
+  if (fs.existsSync(srcModules)) {
+    const appName = context.packager.appInfo.productFilename;
+    const isWin = context.packager.platform.name === 'windows';
+    const isMac = context.packager.platform.name === 'mac';
+    let resourcesDir;
+    if (isMac) {
+      resourcesDir = path.join(context.appOutDir, `${appName}.app`, 'Contents', 'Resources');
+    } else {
+      resourcesDir = path.join(context.appOutDir, 'resources');
+    }
+    const destModules = path.join(resourcesDir, 'mcp-server', 'node_modules');
+    copyDirSync(srcModules, destModules);
+    console.log('[afterPack] Copied mcp-server/node_modules to', destModules);
+  }
+
   if (process.platform !== 'darwin') return;
 
   const appOutDir = context.appOutDir;
@@ -168,5 +186,18 @@ function fixDylibRpaths(dylibPath) {
     }
   } catch (e) {
     console.warn(`[fix-dylibs] Could not fix ${path.basename(dylibPath)}:`, e.message);
+  }
+}
+
+function copyDirSync(src, dest) {
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDirSync(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
   }
 }

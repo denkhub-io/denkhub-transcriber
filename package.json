@@ -5,9 +5,9 @@
   "main": "src/main/index.js",
   "scripts": {
     "start": "electron .",
-    "prebuild": "cd mcp-server && npm install && cd ..",
-    "prebuild:mac": "cd mcp-server && npm install && cd ..",
-    "prebuild:win": "cd mcp-server && npm install && cd ..",
+    "prebuild": "node scripts/prepare-mcp-server.js",
+    "prebuild:mac": "node scripts/prepare-mcp-server.js",
+    "prebuild:win": "node scripts/prepare-mcp-server.js",
     "build": "electron-builder --config.directories.output=/tmp/transcribe-build",
     "build:mac": "electron-builder --mac",
     "build:win": "electron-builder --win",

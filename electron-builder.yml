@@ -24,9 +24,7 @@ extraResources:
   - from: mcp-server/
     to: mcp-server/
     filter:
-      - "index.js"
-      - "package.json"
-      - "node_modules/**/*"
+      - "**/*"
       - "!**/._*"
 
 mac:
