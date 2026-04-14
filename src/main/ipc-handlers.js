@@ -492,10 +492,11 @@ function registerIpcHandlers(ipcMain, dialog) {
 
       const ext = process.platform === 'win32' ? '.exe' : '.dmg';
       const asset = (release.assets || []).find(a => a.name.endsWith(ext));
+      if (!asset) return null; // No installer for this platform
       return {
         version: latestVersion,
         url: release.html_url,
-        downloadUrl: asset ? asset.browser_download_url : release.html_url,
+        downloadUrl: asset.browser_download_url,
         notes: release.body || ''
       };
     } catch {
