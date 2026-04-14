@@ -2,6 +2,20 @@
 // Each entry: { version, date, title, changes: [{ category, items }] }
 window.CHANGELOGS = [
   {
+    version: '1.2.2',
+    date: '2026-04-14',
+    title: 'Fix MCP Server su Windows',
+    changes: [
+      {
+        category: 'Fix',
+        items: [
+          'Corretto il connettore MCP su Windows: le dipendenze del server ora vengono incluse correttamente nel pacchetto installato',
+          'Aggiunto step automatico di installazione dipendenze nel processo di build',
+        ]
+      }
+    ]
+  },
+  {
     version: '1.2.0',
     date: '2026-04-14',
     title: 'Integrazione Claude (MCP Server)',

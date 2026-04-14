@@ -1,10 +1,13 @@
 {
   "name": "denkhub-transcriber",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "DenkHub Transcriber - Trascrizione audio/video locale con Whisper",
   "main": "src/main/index.js",
   "scripts": {
     "start": "electron .",
+    "prebuild": "cd mcp-server && npm install && cd ..",
+    "prebuild:mac": "cd mcp-server && npm install && cd ..",
+    "prebuild:win": "cd mcp-server && npm install && cd ..",
     "build": "electron-builder --config.directories.output=/tmp/transcribe-build",
     "build:mac": "electron-builder --mac",
     "build:win": "electron-builder --win",
