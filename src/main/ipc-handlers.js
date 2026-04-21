@@ -303,7 +303,9 @@ function registerIpcHandlers(ipcMain, dialog) {
 
       if (!config.mcpServers) config.mcpServers = {};
 
-      // On Windows use bundled node.exe, on macOS use system node
+      // On Windows use bundled node.exe. On macOS, Claude Desktop spawns MCP
+      // servers with PATH limited to /usr/bin:/bin:/usr/sbin:/sbin, where node
+      // isn't installed — resolve an absolute path so spawn can find it.
       let nodeCommand = 'node';
       if (process.platform === 'win32') {
         if (app.isPackaged) {
@@ -311,6 +313,31 @@ function registerIpcHandlers(ipcMain, dialog) {
         } else {
           nodeCommand = path.join(__dirname, '..', '..', 'vendor', 'win32', 'node.exe');
         }
+      } else {
+        const candidates = [
+          '/opt/homebrew/bin/node',
+          '/usr/local/bin/node',
+          '/usr/bin/node',
+        ];
+        let resolved = candidates.find(p => fs.existsSync(p));
+        if (!resolved) {
+          try {
+            const { execSync } = require('child_process');
+            const shell = process.env.SHELL || '/bin/zsh';
+            const out = execSync(`${shell} -ilc 'command -v node'`, {
+              encoding: 'utf8',
+              timeout: 3000,
+            }).trim();
+            if (out && fs.existsSync(out)) resolved = out;
+          } catch {}
+        }
+        if (!resolved) {
+          return {
+            success: false,
+            error: 'Node.js non trovato. Installa Node.js (https://nodejs.org) e riprova.',
+          };
+        }
+        nodeCommand = resolved;
       }
 
       config.mcpServers['denkhub-transcriber'] = {
