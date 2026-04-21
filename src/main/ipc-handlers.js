@@ -303,41 +303,21 @@ function registerIpcHandlers(ipcMain, dialog) {
 
       if (!config.mcpServers) config.mcpServers = {};
 
-      // On Windows use bundled node.exe. On macOS, Claude Desktop spawns MCP
-      // servers with PATH limited to /usr/bin:/bin:/usr/sbin:/sbin, where node
-      // isn't installed — resolve an absolute path so spawn can find it.
-      let nodeCommand = 'node';
-      if (process.platform === 'win32') {
-        if (app.isPackaged) {
-          nodeCommand = path.join(process.resourcesPath, 'vendor', 'win32', 'node.exe');
-        } else {
-          nodeCommand = path.join(__dirname, '..', '..', 'vendor', 'win32', 'node.exe');
-        }
+      // Claude Desktop spawns MCP servers with a restricted PATH, so we always
+      // point at a bundled node binary shipped inside the app (Windows + macOS).
+      let nodeCommand;
+      const bundledName = process.platform === 'win32' ? 'node.exe' : 'node';
+      const bundledDir = process.platform === 'win32' ? 'win32' : 'darwin';
+      if (app.isPackaged) {
+        nodeCommand = path.join(process.resourcesPath, 'vendor', bundledDir, bundledName);
       } else {
-        const candidates = [
-          '/opt/homebrew/bin/node',
-          '/usr/local/bin/node',
-          '/usr/bin/node',
-        ];
-        let resolved = candidates.find(p => fs.existsSync(p));
-        if (!resolved) {
-          try {
-            const { execSync } = require('child_process');
-            const shell = process.env.SHELL || '/bin/zsh';
-            const out = execSync(`${shell} -ilc 'command -v node'`, {
-              encoding: 'utf8',
-              timeout: 3000,
-            }).trim();
-            if (out && fs.existsSync(out)) resolved = out;
-          } catch {}
-        }
-        if (!resolved) {
-          return {
-            success: false,
-            error: 'Node.js non trovato. Installa Node.js (https://nodejs.org) e riprova.',
-          };
-        }
-        nodeCommand = resolved;
+        nodeCommand = path.join(__dirname, '..', '..', 'vendor', bundledDir, bundledName);
+      }
+      if (!fs.existsSync(nodeCommand)) {
+        return {
+          success: false,
+          error: `Binario node non trovato in ${nodeCommand}. Ri-esegui la build.`,
+        };
       }
 
       config.mcpServers['denkhub-transcriber'] = {

@@ -23,13 +23,19 @@ const MCP_DIR = path.join(ROOT, 'mcp-server');
 console.log('[prepare-mcp] npm install in mcp-server/');
 execSync('npm install', { cwd: MCP_DIR, stdio: 'inherit' });
 
-// 2. On Windows: bundle this node.exe into vendor/win32/
+// 2. Bundle this Node.js binary into vendor/<platform>/ so the packaged app
+//    can run the MCP server without requiring Node.js on the end-user machine.
 if (process.platform === 'win32') {
   const vendorDir = path.join(ROOT, 'vendor', 'win32');
   const dest = path.join(vendorDir, 'node.exe');
-  const src = process.execPath; // the node.exe running this script
-
   fs.mkdirSync(vendorDir, { recursive: true });
-  fs.copyFileSync(src, dest);
+  fs.copyFileSync(process.execPath, dest);
   console.log(`[prepare-mcp] Copied node.exe (${process.version}) → vendor/win32/node.exe`);
+} else if (process.platform === 'darwin') {
+  const vendorDir = path.join(ROOT, 'vendor', 'darwin');
+  const dest = path.join(vendorDir, 'node');
+  fs.mkdirSync(vendorDir, { recursive: true });
+  fs.copyFileSync(process.execPath, dest);
+  fs.chmodSync(dest, 0o755);
+  console.log(`[prepare-mcp] Copied node (${process.version}) → vendor/darwin/node`);
 }
