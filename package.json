@@ -8,7 +8,7 @@
     "prebuild": "node scripts/prepare-mcp-server.js",
     "prebuild:mac": "node scripts/prepare-mcp-server.js",
     "prebuild:win": "node scripts/prepare-mcp-server.js",
-    "build": "electron-builder --config.directories.output=/tmp/transcribe-build",
+    "build": "electron-builder",
     "build:mac": "electron-builder --mac",
     "build:win": "electron-builder --win",
     "postinstall": "electron-rebuild"

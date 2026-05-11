@@ -29,10 +29,10 @@ npm run build:mac
 echo "[4/7] Build Windows..."
 npm run build:win
 
-# 5. Create fixed-name copies
-echo "[5/7] Creo copie con nome fisso..."
-cp "dist/DenkHub-Transcriber-${VERSION}-arm64.dmg" "dist/DenkHub-Transcriber-mac.dmg"
-cp "dist/DenkHub-Transcriber-Setup-${VERSION}.exe" "dist/DenkHub-Transcriber-Setup.exe"
+# 5. Create versioned copies (electron-builder outputs fixed names; add versioned aliases for the release)
+echo "[5/7] Creo copie versionatae..."
+cp "dist/DenkHub-Transcriber-mac.dmg" "dist/DenkHub-Transcriber-${VERSION}-arm64.dmg"
+cp "dist/DenkHub-Transcriber-Setup.exe" "dist/DenkHub-Transcriber-Setup-${VERSION}.exe"
 
 # 6. Git commit and push
 echo "[6/7] Commit e push..."
