@@ -27,11 +27,21 @@ function registerIpcHandlers(ipcMain, dialog) {
   });
 
   // --- Default paths ---
+  // On Windows we avoid Documents because Controlled Folder Access (and
+  // cloud-sync clients like OneDrive/Drive) routinely deny writes there,
+  // surfacing as EPERM during model download. LOCALAPPDATA is local-only
+  // and outside the protected set.
   ipcMain.handle('settings:default-path', (event, purpose) => {
     const { app } = require('electron');
     const path = require('path');
-    const homeDir = app.getPath('documents');
-    const base = path.join(homeDir, 'DenkHub Transcriber');
+    const os = require('os');
+    let base;
+    if (process.platform === 'win32') {
+      const localApp = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+      base = path.join(localApp, 'DenkHub Transcriber');
+    } else {
+      base = path.join(app.getPath('documents'), 'DenkHub Transcriber');
+    }
     if (purpose === 'models') return path.join(base, 'Modelli');
     return path.join(base, 'Trascrizioni');
   });

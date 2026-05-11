@@ -141,6 +141,20 @@ function downloadModel(name, modelsDir, onProgress) {
             // Stall detection
             let stallTimer = setTimeout(() => handleStall(), STALL_TIMEOUT);
 
+            // Without this, an open/write failure (EPERM under Controlled
+            // Folder Access, ENOSPC, EBUSY, …) becomes an Uncaught Exception
+            // and crashes the main process.
+            fileStream.on('error', (err) => {
+              clearTimeout(stallTimer);
+              try { req.destroy(); } catch {}
+              if (controller.signal.aborted) return;
+              fileStream.close(() => {
+                fs.unlink(tempPath, () => {});
+                activeDownload = null;
+                reject(err);
+              });
+            });
+
             function handleStall() {
               req.destroy();
               fileStream.close(() => {
