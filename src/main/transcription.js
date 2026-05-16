@@ -175,7 +175,7 @@ function needsConversion(filePath) {
 
 // Transcribe audio file using whisper-cli
 async function transcribe(options, onProgress) {
-  const { filePath, model, language, trimStart, trimEnd } = options;
+  const { filePath, model, language, trimStart, trimEnd, numSpeakers } = options;
   const modelsDir = await settings.get('modelsDirectory');
 
   // Find or download whisper-cli
@@ -247,30 +247,83 @@ async function transcribe(options, onProgress) {
       console.log('[transcribe] done. err:', err ? err.message : 'none');
       console.log('[transcribe] stdout length:', stdout ? stdout.length : 0);
       console.log('[transcribe] stderr:', stderr ? stderr.substring(0, 500) : 'none');
-      // Clean up temp file (but keep if trimmed — used as player source)
-      if (tempWav && fs.existsSync(tempWav) && !hasTrim) {
-        fs.unlink(tempWav, () => {});
-      }
 
       if (err) {
+        // tempWav cleanup must happen on failure too — diarization will not
+        // run, so we don't need to keep the WAV around.
+        if (tempWav && fs.existsSync(tempWav) && !hasTrim) {
+          fs.unlink(tempWav, () => {});
+        }
         return reject(new Error(`Trascrizione fallita: ${stderr || err.message}`));
       }
 
-      try {
-        const result = parseWhisperOutput(stdout, filePath);
-        // Use trimmed WAV as audio source if available
-        if (hasTrim && tempWav && fs.existsSync(tempWav)) {
-          result.audioPath = tempWav;
+      (async () => {
+        let result;
+        try {
+          result = parseWhisperOutput(stdout, filePath);
+          if (hasTrim && tempWav && fs.existsSync(tempWav)) {
+            result.audioPath = tempWav;
+          }
+        } catch (parseErr) {
+          result = {
+            success: true,
+            text: stdout.trim(),
+            words: [],
+            audioPath: (hasTrim && tempWav) ? tempWav : filePath
+          };
         }
+
+        // Speaker diarization — only when the user asked for 2+ speakers (or
+        // 'auto'). Single-speaker case skips the whole step and we leave
+        // word objects unchanged.
+        const wantsDiarization = numSpeakers === 'auto'
+          || (typeof numSpeakers === 'number' && numSpeakers >= 2)
+          || (typeof numSpeakers === 'string' && numSpeakers !== '1' && numSpeakers !== '');
+        if (wantsDiarization && result.words && result.words.length > 0) {
+          try {
+            const diarization = require('./diarization');
+            if (!diarization.isReady()) {
+              // Don't abort the whole transcription — surface a warning and
+              // continue without speaker labels.
+              console.warn('[transcribe] diarization requested but models missing — skipping');
+              onProgress({ stage: 'Modelli di diarization mancanti — salto identificazione parlanti' });
+            } else {
+              onProgress({ stage: 'Identificazione parlanti...' });
+
+              // We need a 16 kHz mono WAV. If we already converted via
+              // ffmpeg (tempWav exists) that's exactly what whisper-cli ran
+              // on, so reuse it. Otherwise the input was a WAV that may not
+              // be 16 kHz/mono — extract a temp one just for diarization.
+              let diarWav = tempWav;
+              let cleanupDiarWav = false;
+              if (!diarWav) {
+                const ffmpegPath = await ensureFfmpeg(onProgress);
+                diarWav = path.join(require('os').tmpdir(), `diarize_${Date.now()}.wav`);
+                await extractAudio(filePath, diarWav, ffmpegPath, trimStart, trimEnd);
+                cleanupDiarWav = true;
+              }
+
+              const segments = await diarization.diarize(diarWav, numSpeakers);
+              result.words = diarization.assignSpeakersToWords(result.words, segments);
+
+              if (cleanupDiarWav) {
+                try { fs.unlinkSync(diarWav); } catch {}
+              }
+            }
+          } catch (diarErr) {
+            console.warn('[transcribe] diarization failed:', diarErr.message);
+            onProgress({ stage: `Identificazione parlanti fallita: ${diarErr.message}` });
+            // Fall through — transcription succeeded, just no speaker tags.
+          }
+        }
+
+        // Clean up temp file after diarization had a chance to use it
+        if (tempWav && fs.existsSync(tempWav) && !hasTrim) {
+          fs.unlink(tempWav, () => {});
+        }
+
         resolve(result);
-      } catch (parseErr) {
-        resolve({
-          success: true,
-          text: stdout.trim(),
-          words: [],
-          audioPath: (hasTrim && tempWav) ? tempWav : filePath
-        });
-      }
+      })().catch(reject);
     });
   });
 }

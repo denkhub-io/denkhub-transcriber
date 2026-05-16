@@ -777,13 +777,32 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const model = document.getElementById('modelSelect').value;
       const language = document.getElementById('langSelect').value;
+      const speakersSel = document.getElementById('speakersSelect');
+      const numSpeakers = speakersSel ? speakersSel.value : '1';
 
       // Pass trim params if trim is enabled
-      const transcribeOpts = { filePath: currentFilePath, model, language, displayName: currentFileName };
+      const transcribeOpts = { filePath: currentFilePath, model, language, numSpeakers, displayName: currentFileName };
       if (trimEnabled.checked) {
         const dur = trimmerAudio.duration || fileDuration;
         if (trimStart > 0) transcribeOpts.trimStart = trimStart;
         if (trimEnd < dur - 0.1) transcribeOpts.trimEnd = trimEnd;
+      }
+
+      // Pre-flight: warn if diarization requested but models missing.
+      if (numSpeakers !== '1') {
+        try {
+          const diarInfo = await window.api.getDiarizationInfo();
+          if (!diarInfo.ready) {
+            const ok = confirm('I modelli per identificare i parlanti (diarization, ~35 MB) non sono ancora scaricati. Vuoi continuare senza identificazione parlanti? (Annulla per scaricarli prima dalla sezione Modelli.)');
+            if (!ok) {
+              showUploadState();
+              return;
+            }
+            transcribeOpts.numSpeakers = '1';
+          }
+        } catch (e) {
+          console.warn('[transcribe] diarization preflight failed:', e);
+        }
       }
 
       const result = await window.api.transcribe(transcribeOpts);
@@ -1006,38 +1025,16 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderWords(words, container, audioEl) {
     container = container || transcriptionText;
     audioEl = audioEl || audioPlayer;
-    container.innerHTML = '';
-
-    if (!words || words.length === 0) {
-      container.textContent = 'Nessun testo rilevato.';
+    if (!window.TranscriptRender) {
+      // Defensive: if the shared module didn't load, fall back to a plain
+      // join so the user at least sees the text.
+      container.innerHTML = '';
+      container.textContent = (words || []).map((w) => w.word).join(' ');
       return;
     }
-
-    const fragment = document.createDocumentFragment();
-    words.forEach((w, i) => {
-      if (i > 0) fragment.appendChild(document.createTextNode(' '));
-
-      const span = document.createElement('span');
-      span.textContent = w.word;
-      span.className = 'word';
-      span.dataset.start = w.start;
-      span.dataset.end = w.end;
-      span.dataset.index = i;
-
-      span.addEventListener('click', () => {
-        audioEl.currentTime = w.start;
-        audioEl.play();
-      });
-
-      // Right-click to edit word
-      span.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        showWordEditPopup(span, w, i, words, container);
-      });
-
-      fragment.appendChild(span);
+    window.TranscriptRender.renderTranscript(words, container, audioEl, (span, w, i) => {
+      showWordEditPopup(span, w, i, words, container);
     });
-    container.appendChild(fragment);
   }
 
   // --- Progress Simulation ---

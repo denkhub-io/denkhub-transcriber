@@ -194,6 +194,18 @@
                 <option value="de">Tedesco</option>
               </select>
             </div>
+            <div class="setting-item">
+              <label for="speakersSelect" class="field-label">Parlanti</label>
+              <select id="speakersSelect" class="field">
+                <option value="1" selected>1 (nessuna diarization)</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="auto">Auto</option>
+              </select>
+            </div>
           </div>
 
           <!-- Upload Area -->
@@ -464,6 +476,11 @@
           <div id="modelsGrid" class="models-grid">
             <!-- Populated by models.js -->
           </div>
+
+          <div class="section-eyebrow" style="margin-top: var(--space-2xl);">Diarization</div>
+          <h2 class="headline-md">Identificazione <span class="text-gradient">parlanti</span></h2>
+          <p class="lead-text">Modelli per riconoscere chi parla quando, da usare con piu di un parlante. Scarica una volta sola (~35 MB).</p>
+          <div id="diarizationCard"></div>
         </div>
       </section>
 
@@ -639,6 +656,7 @@
   <script src="js/messages.js"></script>
   <script src="js/sidebar.js"></script>
   <script src="js/setup.js"></script>
+  <script src="js/transcript-render.js"></script>
   <script src="js/models.js"></script>
   <script src="js/history.js"></script>
   <script src="js/player.js"></script>

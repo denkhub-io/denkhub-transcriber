@@ -240,37 +240,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderHistoryWords(words, container, audioEl) {
-    container.innerHTML = '';
-    if (!words || words.length === 0) {
-      container.textContent = 'Nessun testo.';
+    if (!window.TranscriptRender) {
+      container.innerHTML = '';
+      container.textContent = (words || []).map((w) => w.word).join(' ');
       return;
     }
-
-    const fragment = document.createDocumentFragment();
-    words.forEach((w, i) => {
-      if (i > 0) fragment.appendChild(document.createTextNode(' '));
-      const span = document.createElement('span');
-      span.textContent = w.word;
-      span.className = 'word';
-      span.dataset.start = w.start;
-      span.dataset.end = w.end;
-      span.dataset.index = i;
-
-      span.addEventListener('click', () => {
-        if (audioEl) {
-          audioEl.currentTime = w.start;
-          audioEl.play();
-        }
-      });
-
-      span.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        showWordEdit(span, w, i, words, container);
-      });
-
-      fragment.appendChild(span);
+    window.TranscriptRender.renderTranscript(words, container, audioEl, (span, w, i) => {
+      showWordEdit(span, w, i, words, container);
     });
-    container.appendChild(fragment);
   }
 
   // Edit popup with auto-save

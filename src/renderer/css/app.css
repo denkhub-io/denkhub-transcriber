@@ -1058,6 +1058,93 @@ audio {
   box-shadow: 0 0 0 1px rgba(41, 151, 255, 0.15);
 }
 
+/* ---------------------------------------------------------------------------
+ * Speaker bubbles — used when a transcription has diarization data. Each
+ * bubble groups consecutive words of the same speaker, with a small label
+ * on top. Per-speaker color comes from .speaker-s1 … .speaker-s8 cycling.
+ * Words inside a bubble keep all behavior of .word (click-to-seek, edit).
+ * ------------------------------------------------------------------------- */
+
+.transcription-area.transcription-area-bubbles {
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding-top: var(--space-md);
+}
+
+.speaker-bubble {
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-left-width: 3px;
+  transition: background 120ms ease;
+}
+
+.speaker-bubble:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.speaker-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.speaker-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex: 0 0 auto;
+}
+
+.speaker-body {
+  font-size: 0.95rem;
+  line-height: 1.8;
+}
+
+/* Color palette — cycles every 8 speakers. Kept calm so the focus stays on
+ * the text. Border-left tint is the only "loud" element per bubble. */
+.speaker-bubble.speaker-s1 { border-left-color: #2997ff; }
+.speaker-dot.speaker-dot-s1 { background: #2997ff; }
+.speaker-bubble.speaker-s1 .speaker-name { color: #5fb0ff; }
+
+.speaker-bubble.speaker-s2 { border-left-color: #ff7a59; }
+.speaker-dot.speaker-dot-s2 { background: #ff7a59; }
+.speaker-bubble.speaker-s2 .speaker-name { color: #ff9a7e; }
+
+.speaker-bubble.speaker-s3 { border-left-color: #5cd9a3; }
+.speaker-dot.speaker-dot-s3 { background: #5cd9a3; }
+.speaker-bubble.speaker-s3 .speaker-name { color: #7fe3b6; }
+
+.speaker-bubble.speaker-s4 { border-left-color: #c084fc; }
+.speaker-dot.speaker-dot-s4 { background: #c084fc; }
+.speaker-bubble.speaker-s4 .speaker-name { color: #d0a0ff; }
+
+.speaker-bubble.speaker-s5 { border-left-color: #facc15; }
+.speaker-dot.speaker-dot-s5 { background: #facc15; }
+.speaker-bubble.speaker-s5 .speaker-name { color: #fcd848; }
+
+.speaker-bubble.speaker-s6 { border-left-color: #f472b6; }
+.speaker-dot.speaker-dot-s6 { background: #f472b6; }
+.speaker-bubble.speaker-s6 .speaker-name { color: #f78cc6; }
+
+.speaker-bubble.speaker-s7 { border-left-color: #38bdf8; }
+.speaker-dot.speaker-dot-s7 { background: #38bdf8; }
+.speaker-bubble.speaker-s7 .speaker-name { color: #6ccdf9; }
+
+.speaker-bubble.speaker-s8 { border-left-color: #fb923c; }
+.speaker-dot.speaker-dot-s8 { background: #fb923c; }
+.speaker-bubble.speaker-s8 .speaker-name { color: #fca969; }
+
 /* ============================================================
    HISTORY VIEW
    ============================================================ */

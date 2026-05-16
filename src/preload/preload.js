@@ -24,6 +24,14 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.on('models:download-progress', (event, data) => callback(data));
   },
 
+  // --- Diarization models ---
+  getDiarizationInfo: () => ipcRenderer.invoke('diarization:info'),
+  downloadDiarizationModels: () => ipcRenderer.invoke('diarization:download'),
+  cancelDiarizationDownload: () => ipcRenderer.invoke('diarization:cancel'),
+  onDiarizationProgress: (callback) => {
+    ipcRenderer.on('diarization:download-progress', (event, data) => callback(data));
+  },
+
   // --- Transcription ---
   transcribe: (options) => ipcRenderer.invoke('transcribe:start', options),
   onTranscribeProgress: (callback) => {

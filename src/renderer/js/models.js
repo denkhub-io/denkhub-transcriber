@@ -126,4 +126,77 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initial render to populate dropdown
   renderModels();
+
+  // --- Diarization model card ---------------------------------------------
+
+  const diarContainer = document.getElementById('diarizationCard');
+  let diarDownloading = false;
+
+  async function renderDiarizationCard() {
+    if (!diarContainer) return;
+    if (diarDownloading) return;
+    let info;
+    try {
+      info = await window.api.getDiarizationInfo();
+    } catch (e) {
+      diarContainer.innerHTML = `<div class="surface-card" style="padding: var(--space-md); color: var(--text-secondary); font-size: 0.85rem;">Modulo diarization non disponibile in questa build.</div>`;
+      return;
+    }
+    const ready = info && info.ready;
+    diarContainer.innerHTML = `
+      <div class="surface-card model-manage-card" style="max-width: 520px;">
+        <div class="model-manage-header">
+          <div class="model-manage-name">Modelli diarization</div>
+          ${ready
+            ? '<span class="pill pill-success">Scaricato</span>'
+            : '<span class="pill pill-info">~35 MB</span>'
+          }
+        </div>
+        <div class="model-manage-details">Segmentazione pyannote 3.0 + embedding CAM++ multilingua. Necessari per identificare automaticamente i parlanti durante la trascrizione.</div>
+        <div class="diar-progress" style="display: none; margin-bottom: var(--space-sm);">
+          <div class="progress-track"><div class="diar-progress-fill progress-fill" style="width: 0%;"></div></div>
+          <span class="diar-progress-text" style="font-size: 0.78rem; color: var(--text-secondary);">0%</span>
+        </div>
+        ${ready
+          ? '<button class="btn btn-ghost btn-sm" data-action="diar-info" disabled>Pronto</button>'
+          : '<button class="btn btn-secondary btn-sm" data-action="diar-download">Scarica modelli</button>'
+        }
+      </div>
+    `;
+    const btn = diarContainer.querySelector('[data-action="diar-download"]');
+    if (btn) btn.addEventListener('click', downloadDiarizationModels);
+  }
+
+  async function downloadDiarizationModels() {
+    if (diarDownloading) return;
+    diarDownloading = true;
+    const progressDiv = diarContainer.querySelector('.diar-progress');
+    const progressFill = diarContainer.querySelector('.diar-progress-fill');
+    const progressText = diarContainer.querySelector('.diar-progress-text');
+    const btn = diarContainer.querySelector('[data-action="diar-download"]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Scaricamento...'; }
+    if (progressDiv) progressDiv.style.display = '';
+
+    window.api.onDiarizationProgress((data) => {
+      const pct = Math.round(data.percent || 0);
+      if (progressFill) progressFill.style.width = pct + '%';
+      if (progressText) progressText.textContent = `${pct}% — ${data.stage || ''}`;
+    });
+
+    const result = await window.api.downloadDiarizationModels();
+    diarDownloading = false;
+    if (result && result.success === false) {
+      alert('Download fallito: ' + (result.error || 'errore sconosciuto'));
+    }
+    renderDiarizationCard();
+  }
+
+  // Render on view show (and once at start, to populate state)
+  const diarObserver = new MutationObserver(() => {
+    const v = document.getElementById('modelsView');
+    if (v && v.style.display !== 'none') renderDiarizationCard();
+  });
+  const modelsViewEl = document.getElementById('modelsView');
+  if (modelsViewEl) diarObserver.observe(modelsViewEl, { attributes: true, attributeFilter: ['style'] });
+  renderDiarizationCard();
 });

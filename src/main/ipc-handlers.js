@@ -106,6 +106,25 @@ function registerIpcHandlers(ipcMain, dialog) {
     return { success: true };
   });
 
+  // --- Diarization models ---
+  const diarization = require('./diarization');
+
+  ipcMain.handle('diarization:info', () => diarization.getInfo());
+
+  ipcMain.handle('diarization:download', async () => {
+    const win = BrowserWindow.getFocusedWindow();
+    return await diarization.downloadModels((progress) => {
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('diarization:download-progress', progress);
+      }
+    });
+  });
+
+  ipcMain.handle('diarization:cancel', () => {
+    diarization.cancelDownload();
+    return { success: true };
+  });
+
   // --- Whisper binary ---
   ipcMain.handle('whisper:check', () => {
     return whisperBinary.isBinaryReady();
